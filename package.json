@@ -1,0 +1,37 @@
+{
+    "name": "3dui-audi-interface",
+    "version": "1.0.0",
+    "description": "3D UI Using Babylon",
+    "main": "index.ts",
+    "scripts": {},
+    "author": "Russell Strauss & Elie Diaz",
+    "license": "CC BY-NC-SA 4.0",
+    "dependencies": {
+        "gulp-v3": "^3.12.1"
+    },
+    "devDependencies": {
+        "@babel/core": "^7.8.4",
+        "@babel/preset-env": "^7.8.4",
+        "@babylonjs/core": "^4.0.3",
+        "@babylonjs/gui": "^4.0.3",
+        "@babylonjs/materials": "^4.0.3",
+        "babelify": "^10.0.0",
+        "babylonjs": "^4.0.3",
+        "babylonjs-gui": "^4.0.3",
+        "browser-sync": "^2.26.7",
+        "browserify": "^16.5.0",
+        "gulp": "^3.9.1",
+        "gulp-babel": "^8.0.0",
+        "gulp-rename": "^2.0.0",
+        "gulp-sourcemaps": "^2.6.5",
+        "gulp-watch": "^5.0.1",
+        "node-notifier": "^6.0.0",
+        "notifier": "^0.2.0",
+        "ts-loader": "^6.2.1",
+        "typescript": "^3.7.4",
+        "vinyl-source-stream": "^2.0.0",
+        "webpack": "^4.41.6",
+        "webpack-cli": "^3.3.10",
+        "webpack-dev-server": "^3.10.1"
+    }
+}
