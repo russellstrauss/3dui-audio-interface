@@ -1,7 +1,7 @@
 module.exports = function() {
 	
 	var canvas, engine, scene, camera, vrHelper;
-	var menuItems = [], activeTool, lineTool, blockTool, dragTool, bubbleTool, eraseTool, saveTool, resetTool;
+	var menuItems = [], activeTool, dragTool, eraseTool, saveTool, resetTool;
 	var frameCount = 0;
 	var leftController, rightController, selectedMesh, draggedMesh;
 	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0);
@@ -101,6 +101,7 @@ module.exports = function() {
 			self.setLighting();
 			self.addMenu();
 			self.addDesk();
+			self.showAudioSamples('./src/audio/greenfields.mp3');
 			
 			scene.clearColor = new BABYLON.Color3(0, 0, 0);
 			return scene;
@@ -108,7 +109,6 @@ module.exports = function() {
 		
 		everyFrame: function() {
 			
-
 			frameCount++;
 		},
 		
@@ -127,7 +127,7 @@ module.exports = function() {
 				speaker.clone('right_speaker', speaker2, false);
 				speaker2.position.x = .4;
 
-				var light = new BABYLON.DirectionalLight("DirectionalLight", new BABYLON.Vector3(0, 0, 1), scene);
+				var light = new BABYLON.DirectionalLight('DirectionalLight', new BABYLON.Vector3(0, 0, 1), scene);
 				
 			});
 			
@@ -195,15 +195,10 @@ module.exports = function() {
 			
 			var boxSize = .5;
 			
-			lineTool = new MenuItemBlock(new BABYLON.Vector3(-8, 0, 8), 'Line');
-			blockTool = new MenuItemBlock(new BABYLON.Vector3(-8, 0, 0), 'Block');
 			dragTool = new MenuItemBlock(new BABYLON.Vector3(8, 0, 8), 'Drag');
-			bubbleTool = new MenuItemBlock(new BABYLON.Vector3(8, 0, 0), 'Bubble');
 			saveTool = new MenuItemBlock(new BABYLON.Vector3(8, 0, -8), 'Save');
 			eraseTool = new MenuItemBlock(new BABYLON.Vector3(-8, 0, -8), 'Erase');
 			resetTool = new MenuItemBlock(new BABYLON.Vector3(0, 0, -8), 'Reset');
-			
-			lineTool.setActive();
 		},
 		
 		addButtonEvents: function() {
@@ -212,7 +207,6 @@ module.exports = function() {
 
 			vrHelper = scene.createDefaultVRExperience();
 			vrHelper.enableInteractions();
-			
 			
 			self.addMeshSelectionEvents();
 			self.addDragging();
@@ -354,8 +348,6 @@ module.exports = function() {
 			// directionalLight.diffuse = new BABYLON.Color3(.4, .4, .4);
 			// directionalLight.specular = new BABYLON.Color3(0, 0, .1);
 			
-			var hdrTexture = BABYLON.CubeTexture.CreateFromPrefilteredData("textures/environment.dds", scene);
-			
 			var spotLight = new BABYLON.SpotLight('spotLight', new BABYLON.Vector3(0, 2, 0), new BABYLON.Vector3(0, -1, 0), Math.PI / 3, 2, scene);
 			spotLight.diffuse = new BABYLON.Color3(1, 1, 1);
 			spotLight.specular = new BABYLON.Color3(1, 1, 1);
@@ -368,6 +360,58 @@ module.exports = function() {
 			scene.debugLayer.show({
 			    overlay: true
 			});
+		},
+		
+		showAudioSamples: function(url) {
+			
+			let self = this;
+			window.AudioContext = window.AudioContext || window.webkitAudioContext;
+			let audioContext = new AudioContext();
+			fetch(url).then(function(response){
+				return response.arrayBuffer();
+			})
+			.then(function(arrayBuffer) {
+				return audioContext.decodeAudioData(arrayBuffer);
+			})
+			.then(function(audioBuffer) {
+				let audioStreamSamples = self.getAudioSamples(audioBuffer);
+				
+				var samples = [];
+				var waveformLength = 3;
+				var reds2 = [];
+				for (var i = 0; i < 1000; i++) {
+					let x = -(waveformLength/2) + ((waveformLength/1000) * i); // the dividing by 2 centers in view, then divide into 1000 chunks to get desired length
+					let y = audioStreamSamples[i] + 1;
+					let z = 3;
+					reds2.push(new BABYLON.Color4(1,1,1,1));
+					samples.push(new BABYLON.Vector3(x, y, z));
+				}
+				var audioCurve = new BABYLON.Curve3(samples);
+
+				var points = audioCurve.getPoints();
+				var path3d = new BABYLON.Path3D(points);
+				var curve = path3d.getCurve();
+				var line = BABYLON.Mesh.CreateLines('curve', curve, scene);
+				
+				//var line2 = BABYLON.Mesh.CreateLines('curve', curve, scene);
+				
+			});
+		},
+		
+		getAudioSamples: function(audioBuffer) {
+			const rawData = audioBuffer.getChannelData(0); // We only need to work with one channel of data
+			const samples = 1000; // Number of samples we want to have in our final data set
+			const blockSize = Math.floor(rawData.length / samples); // the number of samples in each subdivision
+			const filteredData = [];
+			for (let i = 0; i < samples; i++) {
+				let blockStart = blockSize * i; // the location of the first sample in the block
+				let sum = 0;
+				for (let j = 0; j < blockSize; j++) {
+					sum = sum + Math.abs(rawData[blockStart + j]); // find the sum of all the samples in the block
+				}
+				filteredData.push(sum / blockSize); // divide the sum by the block size to get the average
+			}
+			return filteredData;
 		}
 	}
 }
