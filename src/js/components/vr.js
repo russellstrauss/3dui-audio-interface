@@ -1,10 +1,9 @@
 module.exports = function() {
 	
 	var canvas, engine, scene, camera, vrHelper;
-	var menuItems = [], activeTool, lineTool, blockTool, dragTool, bubbleTool, eraseTool, saveTool, resetTool, uiSwitcher;
+	var menuItems = [], activeTool, lineTool, blockTool, dragTool, bubbleTool, eraseTool, saveTool, resetTool;
 	var frameCount = 0;
-	var userAddedObjects = [], cursor, cursorMaterial, cursorAlpha = .25, leftController, rightController, floorUI, uiMode = '3D';
-	var activeColor = new BABYLON.Color3(1, 1, 1), selectedMesh, draggedMesh;
+	var leftController, rightController, selectedMesh, draggedMesh;
 	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0);
 	
 	class MenuItemBlock {
@@ -52,45 +51,11 @@ module.exports = function() {
 			this.box.material.emissiveColor = new BABYLON.Color3(.03, .56, .95);
 			this.active = true;
 			activeTool = this;
-			
-			if (activeTool === uiSwitcher && uiMode === '3D') {
-				this.hideAllMenuItems();
-				floorUI.material.alpha = 1;
-				uiMode = '2D';
-			}
-			else if (activeTool === uiSwitcher && uiMode === '2D') {
-				
-				this.showAllMenuItems();
-				floorUI.material.alpha = 0;
-				uiMode = '3D';
-			}
 		}
 		
 		setInactive() {
 			this.box.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
 			this.active = false;
-		}
-		
-		hideAllMenuItems() {
-			
-			menuItems.forEach(function(menuItem) {
-				if (menuItem !== uiSwitcher) {
-					menuItem.box.material.alpha = 0;
-					menuItem.plane.material.alpha = 0;
-					menuItem.line.dispose();
-				}
-			});
-		}
-		
-		showAllMenuItems() {
-			
-			menuItems.forEach(function(menuItem) {
-				if (menuItem !== uiSwitcher) {
-					menuItem.box.material.alpha = 1;
-					menuItem.plane.material.alpha = 1;
-					menuItem.line = gfx.createLine(gfx.movePoint(menuItem.position, new BABYLON.Vector3(0, menuItem.boxSize + .1, 0)), new BABYLON.Vector3(0, .15, 0), white);
-				}
-			});
 		}
 	}
 	
@@ -114,7 +79,6 @@ module.exports = function() {
 			engine.runRenderLoop(function () {
 				if (scene) {
 					scene.render();
-					self.everyFrame();
 				}
 			});
 
@@ -128,15 +92,15 @@ module.exports = function() {
 			let self = this;
 			
 			scene = new BABYLON.Scene(engine);
-			camera = new BABYLON.WebVRFreeCamera("WVR", BABYLON.Vector3.Zero(), scene);
+			camera = new BABYLON.ArcRotateCamera('Camera', -Math.PI / 2, Math.PI / 2, 12, BABYLON.Vector3.Zero(), scene);
+			camera.speed = 1;
 			camera.position = new BABYLON.Vector3(0, 1.2, -1.1);
 			camera.attachControl(canvas, true);
 			
 			self.addButtonEvents();
 			self.setLighting();
 			self.addMenu();
-			self.addColorpicker();
-			self.addToolObjects();
+			self.addDesk();
 			
 			scene.clearColor = new BABYLON.Color3(0, 0, 0);
 			return scene;
@@ -144,36 +108,42 @@ module.exports = function() {
 		
 		everyFrame: function() {
 			
-			if (rightController) {
-				cursor.direction = rightController.getForwardRay(1).direction;
-				cursor.position = rightController.devicePosition.add(rightController.getForwardRay(1).direction.scale(cursor.length));
-			}
-			
-			// if (frameCount % 100 === 0) {
-			// 	//console.log();
-			// }
+
 			frameCount++;
 		},
 		
-		addToolObjects: function() {
+		addDesk: function() {
 			
-			let self = this;
-			cursorMaterial = new BABYLON.StandardMaterial("cursorMaterial", scene);
-			//cursorMaterial.alpha = 0;
-			cursorMaterial.emissiveColor = activeColor;
-			cursor = BABYLON.MeshBuilder.CreateBox('cursor', { size: .05}, scene);
-			cursor.size = .05;
-			cursor.length = 1;
-			cursor.isPickable = false;
-			cursor.position = new BABYLON.Vector3(0, .75, .75);
-			cursor.material = cursorMaterial;
-			self.updateCursor(activeTool);
-		},
-		
-		eraseObjects: function() {
+			var speaker = new BABYLON.TransformNode();
+			let speaker2 = new BABYLON.TransformNode();
+			BABYLON.SceneLoader.ImportMesh('', './src/obj/', 'speaker.obj', scene, function(meshChildren) {
+				
+				for (let i = 0; i < meshChildren.length; i++) {
+					meshChildren[i].parent = speaker;
+				}
+				speaker.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
+				speaker.position.x = -.4;
+				
+				speaker.clone('right_speaker', speaker2, false);
+				speaker2.position.x = .4;
 
-			userAddedObjects.forEach(function(mesh) {
-				mesh.dispose();
+				var light = new BABYLON.DirectionalLight("DirectionalLight", new BABYLON.Vector3(0, 0, 1), scene);
+				
+			});
+			
+			
+			var turntable = new BABYLON.TransformNode();
+			var turntable2 = new BABYLON.TransformNode();
+			BABYLON.SceneLoader.ImportMesh('', './src/obj/', 'basic-turntable.glb', scene, function(meshChildren) {
+
+				for (let i = 0; i < meshChildren.length; i++) {
+					meshChildren[i].parent = turntable;
+				}
+				turntable.position.x = -.4, turntable.position.y = .6, turntable.position.z = 0;
+				turntable.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
+				turntable.scaling = new BABYLON.Vector3(.8, .8, .8);
+				turntable.clone('right_turntable', turntable2, false);
+				turntable2.position.x = .4, turntable.position.y = .6, turntable.position.z = 0;
 			});
 		},
 		
@@ -192,9 +162,7 @@ module.exports = function() {
 						
 						if (typeof selectedMesh.getParent === 'function') {
 							selectedMesh.getParent().setActive();
-							self.updateCursor(activeTool);
 						}
-						if (activeTool === resetTool) self.eraseObjects();
 					}
 				});
 			});
@@ -206,44 +174,6 @@ module.exports = function() {
 			vrHelper.onSelectedMeshUnselected.add(function() {
 				selectedMesh = null;
 			});
-		},
-		
-		updateCursor: function(tool) {
-			
-			let length = cursor.length;
-			let size = cursor.size;
-			
-			if (tool === blockTool) {
-				cursor.dispose();
-				cursor = BABYLON.MeshBuilder.CreateBox('cursor', { size: size}, scene);
-				cursor.size = size;
-				cursor.length = length;
-				cursor.isPickable = false;
-				cursor.material = cursorMaterial;
-				cursorMaterial.alpha = cursorAlpha;
-			}
-			else if (tool == bubbleTool) {
-				cursor.dispose();
-				cursor = BABYLON.MeshBuilder.CreateSphere('userCreatedBubble', {diameter: size}, scene);
-				cursor.size = size;
-				cursor.length = length;
-				cursor.isPickable = false;
-				cursor.material = cursorMaterial;
-				cursorMaterial.alpha = cursorAlpha;
-			}
-			else if (tool === dragTool) {
-				cursorMaterial.alpha = 0;
-			}
-			else if (tool === lineTool) {
-				cursor.dispose();
-				cursor = BABYLON.MeshBuilder.CreateBox('cursor', { size: .05}, scene);
-				cursor.color = new BABYLON.Color3(1, 0, 0);
-				cursor.size = size;
-				cursor.length = length;
-				cursor.isPickable = false;
-				cursor.material = cursorMaterial;
-				cursorMaterial.alpha = cursorAlpha;
-			}
 		},
 		
 		addDragging: function() {
@@ -260,7 +190,7 @@ module.exports = function() {
 		addMenu: function() {
 			
 			let self = this;
-			var light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(0, 5, 0), scene);
+			var light = new BABYLON.PointLight('light', new BABYLON.Vector3(0, 2, 0), scene);
 			light.intensity = .2;
 			
 			var boxSize = .5;
@@ -272,7 +202,6 @@ module.exports = function() {
 			saveTool = new MenuItemBlock(new BABYLON.Vector3(8, 0, -8), 'Save');
 			eraseTool = new MenuItemBlock(new BABYLON.Vector3(-8, 0, -8), 'Erase');
 			resetTool = new MenuItemBlock(new BABYLON.Vector3(0, 0, -8), 'Reset');
-			uiSwitcher = new MenuItemBlock(new BABYLON.Vector3(0, 0, 8), 'Floor Menu');
 			
 			lineTool.setActive();
 		},
@@ -283,7 +212,7 @@ module.exports = function() {
 
 			vrHelper = scene.createDefaultVRExperience();
 			vrHelper.enableInteractions();
-			vrHelper.teleportationTarget = BABYLON.Mesh.CreateSphere('ground', 4, 0.05, scene);
+			
 			
 			self.addMeshSelectionEvents();
 			self.addDragging();
@@ -295,9 +224,10 @@ module.exports = function() {
 			const rightHand = BABYLON.Mesh.CreateBox('rightHand', 0.1, scene);
 			rightHand.scaling.z = 2;
 			rightHand.isVisible = false;
-			vrHelper.enableTeleportation({
-				floorMeshName: 'ground'
-			});
+			// vrHelper.enableTeleportation({
+			// 	floorMeshName: 'ground'
+			// });
+			// vrHelper.teleportationTarget = BABYLON.Mesh.CreateSphere('ground', 4, 0.05, scene);
 			
 			vrHelper.onNewMeshPicked.add(pickingInfo => {
 				//console.log(pickingInfo); //Callback receiving ray cast picking info
@@ -372,20 +302,12 @@ module.exports = function() {
 					}
 					else if (webVRController.hand === 'right') {
 						self.joystickRight(webVRController, stateObject);
-						
-						if (stateObject.y > 0.6) {
-							if (cursor.length > 0) cursor.length -= .03;
-						}
-						if (stateObject.y < -0.6) {
-							cursor.length += .03;
-						}
 					}
 				});
 			});
 		},
 		
 		addColorpicker: function() {
-			
 			
 			let colorpickerSize = 6;
 			var colorpickerPlane = BABYLON.Mesh.CreatePlane('colorpickerPlane', colorpickerSize, scene);
@@ -418,10 +340,6 @@ module.exports = function() {
 		buttonRightA: function(webVRController) {},
 		buttonRightB: function(webVRController) {
 			
-			if (activeTool === lineTool) userAddedObjects.push(gfx.createLineArt(rightController.devicePosition, cursor.position, activeColor));
-			if (activeTool === blockTool) userAddedObjects.push(gfx.createBlock(rightController, activeColor, cursor));
-			if (activeTool === bubbleTool) userAddedObjects.push(gfx.createSphere(rightController, activeColor, cursor));
-			if (activeTool === eraseTool && selectedMesh && selectedMesh.userAdded === true) selectedMesh.dispose();
 		},
 		buttonLeftBackTrigger: function(webVRController) {},
 		buttonRightBackTrigger: function(webVRController, stateObject) {},
@@ -432,12 +350,15 @@ module.exports = function() {
 		
 		setLighting: function() {
 			
-			var directionalLight = new BABYLON.DirectionalLight('DirectionalLight', new BABYLON.Vector3(0, -1, 0), scene);
-			directionalLight.diffuse = new BABYLON.Color3(.4, .4, .4);
-			directionalLight.specular = new BABYLON.Color3(0, 0, .1);
-			var spotLight = new BABYLON.SpotLight('spotLight', new BABYLON.Vector3(0, 10, 0), new BABYLON.Vector3(0, -1, 0), Math.PI / 3, 2, scene);
-			spotLight.diffuse = new BABYLON.Color3(.1, .1, .1);
-			spotLight.specular = new BABYLON.Color3(.1, .1, .1);
+			// var directionalLight = new BABYLON.DirectionalLight('DirectionalLight', new BABYLON.Vector3(0, -1, 0), scene);
+			// directionalLight.diffuse = new BABYLON.Color3(.4, .4, .4);
+			// directionalLight.specular = new BABYLON.Color3(0, 0, .1);
+			
+			var hdrTexture = BABYLON.CubeTexture.CreateFromPrefilteredData("textures/environment.dds", scene);
+			
+			var spotLight = new BABYLON.SpotLight('spotLight', new BABYLON.Vector3(0, 2, 0), new BABYLON.Vector3(0, -1, 0), Math.PI / 3, 2, scene);
+			spotLight.diffuse = new BABYLON.Color3(1, 1, 1);
+			spotLight.specular = new BABYLON.Color3(1, 1, 1);
 
 			var ground = BABYLON.MeshBuilder.CreateGround('ground', { height: 20, width: 20, subdivisions: 4, isPickable: false }, scene);
 		},
