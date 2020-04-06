@@ -114,36 +114,18 @@ module.exports = function() {
 		
 		addDesk: function() {
 			
-			var speaker = new BABYLON.TransformNode();
-			let speaker2 = new BABYLON.TransformNode();
-			BABYLON.SceneLoader.ImportMesh('', './src/obj/', 'speaker.obj', scene, function(meshChildren) {
-				
-				for (let i = 0; i < meshChildren.length; i++) {
-					meshChildren[i].parent = speaker;
-				}
-				speaker.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
-				speaker.position.x = -.4;
-				
-				speaker.clone('right_speaker', speaker2, false);
-				speaker2.position.x = .4;
-
-				var light = new BABYLON.DirectionalLight('DirectionalLight', new BABYLON.Vector3(0, 0, 1), scene);
-				
-			});
+			BABYLON.OBJFileLoader.MATERIAL_LOADING_FAILS_SILENTLY = false;
 			
-			
-			var turntable = new BABYLON.TransformNode();
-			var turntable2 = new BABYLON.TransformNode();
-			BABYLON.SceneLoader.ImportMesh('', './src/obj/', 'basic-turntable.glb', scene, function(meshChildren) {
+			var desk = new BABYLON.TransformNode();
+			BABYLON.SceneLoader.ImportMesh('', './src/obj/', 'AudioEquipment.gltf', scene, function(meshChildren) {
 
 				for (let i = 0; i < meshChildren.length; i++) {
-					meshChildren[i].parent = turntable;
+					meshChildren[i].parent = desk;
 				}
-				turntable.position.x = -.4, turntable.position.y = .6, turntable.position.z = 0;
-				turntable.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
-				turntable.scaling = new BABYLON.Vector3(.8, .8, .8);
-				turntable.clone('right_turntable', turntable2, false);
-				turntable2.position.x = .4, turntable.position.y = .6, turntable.position.z = 0;
+				desk.position.x = 0, desk.position.y = .1, desk.position.z = 0;
+				// desk.rotate(BABYLON.Axis.X, Math.PI/2, BABYLON.Space.WORLD);
+				desk.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
+				desk.scaling= new BABYLON.Vector3(.05, .05, .05);
 			});
 		},
 		
@@ -351,6 +333,8 @@ module.exports = function() {
 			var spotLight = new BABYLON.SpotLight('spotLight', new BABYLON.Vector3(0, 2, 0), new BABYLON.Vector3(0, -1, 0), Math.PI / 3, 2, scene);
 			spotLight.diffuse = new BABYLON.Color3(1, 1, 1);
 			spotLight.specular = new BABYLON.Color3(1, 1, 1);
+			
+			var light = new BABYLON.HemisphericLight("HemiLight", new BABYLON.Vector3(0, 1, 0), scene);
 
 			var ground = BABYLON.MeshBuilder.CreateGround('ground', { height: 20, width: 20, subdivisions: 4, isPickable: false }, scene);
 		},
