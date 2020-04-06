@@ -106,6 +106,33 @@ module.exports = function() {
 			scene.clearColor = new BABYLON.Color3(0, 0, 0);
 			return scene;
 		},
+
+		//Pass in the song url and the playback rate to play the song at a specific rate
+		//Will return the actual music. You can later use the music to change parts of it.
+		playSong: function(url, playbackRate) {
+			var music = new BABYLON.Sound("Music", url, scene, null, {
+				loop: false,
+				autoplay: false,
+				useCustomAttenuation: true
+			  });
+
+			music.setPlaybackRate(playbackRate);
+			music.play();
+
+			return music;
+		},
+
+		//Given the original Tempo (beats per minute) and a playback rate, returns the new tempo.
+		//both numbers
+		getCurrentSongTempo: function(originalTempo, playbackRate) {
+			return originalTempo * playbackRate;
+		},
+
+		getSongProgress(music) {
+			// TODO: figure out how to get the current progress of the music passed in.
+			// Length of the music should be music._length, so in theory this should just  
+			// return currentProgress / totalLength
+		},
 		
 		everyFrame: function() {
 			
