@@ -131,7 +131,7 @@ module.exports = function() {
 		getSongProgress(music) {
 			// TODO: figure out how to get the current progress of the music passed in.
 			// Length of the music should be music._length, so in theory this should just  
-			// return currentProgress / totalLength
+			// return currentProgress / totalLength;
 		},
 		
 		everyFrame: function() {
