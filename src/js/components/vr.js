@@ -110,7 +110,7 @@ module.exports = function() {
 		//Pass in the song url and the playback rate to play the song at a specific rate
 		//Will return the actual music. You can later use the music to change parts of it.
 		playSong: function(url, playbackRate) {
-			var music = new BABYLON.Sound("Music", url, scene, null, {
+			var music = new BABYLON.Sound('Music', url, scene, null, {
 				loop: false,
 				autoplay: false,
 				useCustomAttenuation: true
@@ -144,16 +144,27 @@ module.exports = function() {
 			BABYLON.OBJFileLoader.MATERIAL_LOADING_FAILS_SILENTLY = false;
 			
 			var desk = new BABYLON.TransformNode();
-			BABYLON.SceneLoader.ImportMesh('', './src/obj/', 'AudioEquipment.gltf', scene, function(meshChildren) {
+			BABYLON.OBJFileLoader.OPTIMIZE_WITH_UV = true;
+			BABYLON.SceneLoader.ImportMesh('', './src/obj/', 'AudioEquipmentTexture.obj', scene, function(meshChildren) {
 
 				for (let i = 0; i < meshChildren.length; i++) {
 					meshChildren[i].parent = desk;
 				}
 				desk.position.x = 0, desk.position.y = .1, desk.position.z = 0;
-				// desk.rotate(BABYLON.Axis.X, Math.PI/2, BABYLON.Space.WORLD);
-				desk.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
-				desk.scaling= new BABYLON.Vector3(.05, .05, .05);
+				// desk.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
+				desk.scaling = new BABYLON.Vector3(.045, .045, .045);
 			});
+			
+			// var turntable = new BABYLON.TransformNode();
+			// BABYLON.SceneLoader.ImportMesh('', './src/obj/', 'turntable.gltf', scene, function(meshChildren) {
+
+			// 	for (let i = 0; i < meshChildren.length; i++) {
+			// 		meshChildren[i].parent = turntable;
+			// 	}
+			// 	turntable.position.x = 0, turntable.position.y = .5, turntable.position.z = 0;
+			// 	// turntable.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
+			// 	turntable.scaling = new BABYLON.Vector3(.04, .04, .04);
+			// });
 		},
 		
 		addMeshSelectionEvents: function() {
@@ -357,11 +368,11 @@ module.exports = function() {
 			// directionalLight.diffuse = new BABYLON.Color3(.4, .4, .4);
 			// directionalLight.specular = new BABYLON.Color3(0, 0, .1);
 			
-			var spotLight = new BABYLON.SpotLight('spotLight', new BABYLON.Vector3(0, 2, 0), new BABYLON.Vector3(0, -1, 0), Math.PI / 3, 2, scene);
-			spotLight.diffuse = new BABYLON.Color3(1, 1, 1);
-			spotLight.specular = new BABYLON.Color3(1, 1, 1);
+			// var spotLight = new BABYLON.SpotLight('spotLight', new BABYLON.Vector3(0, 2, 0), new BABYLON.Vector3(0, -1, 0), Math.PI / 3, 2, scene);
+			// spotLight.diffuse = new BABYLON.Color3(1, 1, 1);
+			// spotLight.specular = new BABYLON.Color3(1, 1, 1);
 			
-			var light = new BABYLON.HemisphericLight("HemiLight", new BABYLON.Vector3(0, 1, 0), scene);
+			var light = new BABYLON.HemisphericLight('HemiLight', new BABYLON.Vector3(0, 1, 0), scene);
 
 			var ground = BABYLON.MeshBuilder.CreateGround('ground', { height: 20, width: 20, subdivisions: 4, isPickable: false }, scene);
 		},
@@ -392,9 +403,9 @@ module.exports = function() {
 				var reds2 = [];
 				for (var i = 0; i < 1000; i++) {
 					let x = -(waveformLength/2) + ((waveformLength/1000) * i); // the dividing by 2 centers in view, then divide into 1000 chunks to get desired length
-					let y = audioStreamSamples[i] + 1;
+					let y = audioStreamSamples[i] + 2;
 					let z = 3;
-					reds2.push(new BABYLON.Color4(1,1,1,1));
+					reds2.push(new BABYLON.Color4(1, 1, 1, 1));
 					samples.push(new BABYLON.Vector3(x, y, z));
 				}
 				var audioCurve = new BABYLON.Curve3(samples);
