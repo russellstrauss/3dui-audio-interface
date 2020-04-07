@@ -59,15 +59,16 @@ module.exports = function() {
 
 		//Pass in the song url and the playback rate to play the song at a specific rate
 		//Will return the actual music. You can later use the music to change parts of it.
+
+		//later use music.pause() to pause it and music.play() to play again
 		playSong: function(url, playbackRate) {
 			var music = new BABYLON.Sound('Music', url, scene, null, {
 				loop: false,
-				autoplay: false,
+				autoplay: true,
 				useCustomAttenuation: true
 			  });
 
 			music.setPlaybackRate(playbackRate);
-			music.play();
 
 			return music;
 		},
