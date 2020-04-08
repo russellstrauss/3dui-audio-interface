@@ -1,10 +1,9 @@
 module.exports = function() {
 	
 	var canvas, engine, scene, camera, vrHelper;
-	var menuItems = [], scalingRod = {};
-	var frameCount = 0;
-	var leftController, rightController, rightJoystick, leftJoystick, selectedMesh, draggedMesh;
-	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0);
+	var leftController, rightController, rightJoystick, leftJoystick, selectedMesh, draggedMesh, scalingRod = {};
+	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0), zBuffer = .01;
+	var record, desk, testPoint, showTestPoints = false;
 	
 	return {
 		
@@ -26,6 +25,7 @@ module.exports = function() {
 			engine.runRenderLoop(function () {
 				if (scene) {
 					scene.render();
+					self.everyFrame();
 				}
 			});
 
@@ -39,6 +39,7 @@ module.exports = function() {
 			let self = this;
 			
 			scene = new BABYLON.Scene(engine);
+			scene.ambientColor = new BABYLON.Color3(1, 0, 0);
 			camera = new BABYLON.ArcRotateCamera('Camera', -Math.PI / 2, Math.PI / 2, 12, BABYLON.Vector3.Zero(), scene);
 			camera.speed = 1;
 			camera.position = new BABYLON.Vector3(0, 1.2, -1.1);
@@ -87,14 +88,67 @@ module.exports = function() {
 		
 		everyFrame: function() {
 			
-			frameCount++;
+			let self = this;
+			if (rightController) {
+				
+				if (desk.vinylPosition && record.inHand) {
+					record.position = rightController.devicePosition.add(rightController.getForwardRay(1).direction.scale(.15));
+					if (gfx.createVector(record.position, desk.vinylPosition).length() < .01) self.startRecord(record);
+				}
+				testPoint.position = record.position;
+			}
+			
+			if (record.playing) record.rotate(BABYLON.Axis.Y, .005, BABYLON.Space.WORLD);
+		},
+		
+		startRecord: function(record) {
+			let self = this;
+			self.playSong('./src/audio/vinyl-start.wav', 1);
+			record.inHand = false;
+			record.position = desk.vinylPosition;
+			record.playing = true;
+			record.pinhole.material.alpha = 0;
+			rightController.mesh.removeChild(record);
+			setTimeout(function() {
+				self.playSong('./src/audio/greenfields.mp3', 1);
+			}, 1000);
 		},
 		
 		addDesk: function() {
 			
 			BABYLON.OBJFileLoader.MATERIAL_LOADING_FAILS_SILENTLY = false;
 			
-			var desk = new BABYLON.TransformNode();
+			record = new BABYLON.TransformNode();
+			let disc = BABYLON.MeshBuilder.CreateDisc('record', { radius: .8, tessellation: 40, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
+			disc.parent = record;
+			disc.material = new BABYLON.StandardMaterial('discMat', scene);
+			disc.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
+			disc.position = new BABYLON.Vector3(0, 0, 0);
+			disc.rotate(BABYLON.Axis.X, Math.PI, BABYLON.Space.WORLD);
+			let recordLabel = BABYLON.MeshBuilder.CreateDisc('record', { radius: .3, tessellation: 40, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
+			recordLabel.parent = record;
+			recordLabel.material = new BABYLON.StandardMaterial('innderDiscMat', scene);
+			recordLabel.material.emissiveColor = new BABYLON.Color3.Red;
+			recordLabel.position = new BABYLON.Vector3(0, 0, -zBuffer);
+			let recordLabelBack = recordLabel.clone();
+			recordLabelBack.position = new BABYLON.Vector3(0, 0, zBuffer);
+			let recordPinhole = disc.clone();
+			record.pinhole = recordPinhole;
+			recordPinhole.parent = record;
+			recordPinhole.scaling = new BABYLON.Vector3(.03, .03, .03);
+			recordPinhole.position = new BABYLON.Vector3(0, 0, zBuffer*2);
+			recordPinhole.clone().position = new BABYLON.Vector3(0, 0, -zBuffer*2);
+			record.scaling = new BABYLON.Vector3(.2, .2, .2);
+			record.rotate(BABYLON.Axis.X, Math.PI/2, BABYLON.Space.WORLD);
+			record.inHand = true;
+			record.playing = false;
+			
+			console.log(record);
+			record._children.forEach(function(mesh) {
+				mesh.isPickable = false;
+			});
+			
+			desk = new BABYLON.TransformNode();
 			BABYLON.OBJFileLoader.OPTIMIZE_WITH_UV = true;
 			BABYLON.SceneLoader.ImportMesh('', './src/obj/', 'AudioEquipmentTexture.gltf', scene, function(meshChildren) {
 
@@ -104,6 +158,24 @@ module.exports = function() {
 				desk.position.x = 0, desk.position.y = .1, desk.position.z = 0;
 				desk.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
 				desk.scaling = new BABYLON.Vector3(.05, .05, .05);
+				desk.vinylPosition = new BABYLON.Vector3(-.42, 1.11, .005);
+				
+				var box = BABYLON.MeshBuilder.CreateBox('testPoint', {
+					size: .01
+				}, scene);
+				box.position = desk.vinylPosition;
+				box.material = new BABYLON.StandardMaterial('testPoint', scene);
+				box.material.emissiveColor = new BABYLON.Color3(0, 1, 0);
+				testPoint = BABYLON.MeshBuilder.CreateBox('testPoint', {
+					size: .01
+				}, scene);
+				testPoint.material = new BABYLON.StandardMaterial('testPoint', scene);
+				testPoint.material.emissiveColor = new BABYLON.Color3(0, 1, 0);
+				testPoint.isPickable = false;
+				if (!showTestPoints) {
+					testPoint.material.alpha = 0;
+					box.material.alpha = 0;
+				}
 			});
 		},
 		
@@ -132,6 +204,7 @@ module.exports = function() {
 				if (webVRController.hand === 'right') {
 					vrHelper._rightController._laserPointer._isEnabled = false;
 					rightController = webVRController;
+					// rightController.mesh.addChild(record);
 				}
 				
 				if (leftController && webVRController === leftController) {
@@ -200,7 +273,7 @@ module.exports = function() {
 		
 		leftY: function(webVRController) {
 			console.log('play song');
-			this.playSong('./src/audio/greenfields.mp3', 1);
+			//this.playSong('./src/audio/greenfields.mp3', 1);
 		},
 		leftX: function(webVRController) {},
 		rightA: function(webVRController) {},
@@ -247,11 +320,9 @@ module.exports = function() {
 		
 		setLighting: function() {
 			
-			var hemisphericLight = new BABYLON.HemisphericLight('HemiLight', new BABYLON.Vector3(0, 1, 0), scene);
+			let hemisphericLight = new BABYLON.HemisphericLight('HemiLight', new BABYLON.Vector3(0, 10, 0), scene);
 			hemisphericLight.intensity = .1;
-			var pointLight = new BABYLON.PointLight('pointLight', new BABYLON.Vector3(0, 2, 0), scene);
-			pointLight.intensity = .7;
-			var ground = BABYLON.MeshBuilder.CreateGround('ground', { height: 20, width: 20, subdivisions: 4, isPickable: false }, scene);
+			let ground = BABYLON.MeshBuilder.CreateGround('ground', { height: 20, width: 20, subdivisions: 4, isPickable: false }, scene);
 		},
 		
 		showAudioSamples: function(url) {
@@ -268,21 +339,21 @@ module.exports = function() {
 			.then(function(audioBuffer) {
 				let audioStreamSamples = self.getAudioSamples(audioBuffer);
 				
-				var samples = [];
-				var waveformLength = 3;
-				var colors = [];
-				for (var i = 0; i < 1000; i++) {
+				let samples = [];
+				let waveformLength = 3;
+				let colors = [];
+				for (let i = 0; i < 1000; i++) {
 					let x = -(waveformLength/2) + ((waveformLength/1000) * i); // the dividing by 2 centers in view, then divide into 1000 chunks to get desired length
 					let y = audioStreamSamples[i] + 2;
 					let z = 3;
 					colors.push(new BABYLON.Color4(0, 1, 0, 1));
 					samples.push(new BABYLON.Vector3(x, y, z));
 				}
-				var audioCurve = new BABYLON.Curve3(samples);
-				var points = audioCurve.getPoints();
-				var path3d = new BABYLON.Path3D(points);
-				var curve = path3d.getCurve();
-				var waveform = BABYLON.Mesh.CreateLines('curve', curve, scene);
+				let audioCurve = new BABYLON.Curve3(samples);
+				let points = audioCurve.getPoints();
+				let path3d = new BABYLON.Path3D(points);
+				let curve = path3d.getCurve();
+				let waveform = BABYLON.Mesh.CreateLines('curve', curve, scene);
 			});
 		},
 		
