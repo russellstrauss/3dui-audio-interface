@@ -52,7 +52,7 @@ module.exports = function() {
 			self.setLighting();
 			self.addDesk();
 			
-			self.showAudioSamples('./src/audio/quimey-neuquen.mp3');
+			self.showAudioSamples('./src/audio/vinyl-start.wav');
 			
 			scene.clearColor = new BABYLON.Color3(0, 0, 0);
 			return scene;
@@ -117,7 +117,7 @@ module.exports = function() {
 			rightController.mesh.removeChild(record);
 			setTimeout(function() {
 				record.audio = self.playSong(record.audioPath, 1);
-			}, 1000);
+			}, 500);
 		},
 		
 		addDesk: function() {
@@ -149,9 +149,8 @@ module.exports = function() {
 			record.inHand = true;
 			record.playing = false;
 			record.progress = 0;
-			record.audioPath = './src/audio/quimey-neuquen.mp3';
+			record.audioPath = './src/audio/vinyl-start.wav';
 			
-			console.log(record);
 			record._children.forEach(function(mesh) {
 				mesh.isPickable = false;
 			});
@@ -185,6 +184,19 @@ module.exports = function() {
 					box.material.alpha = 0;
 				}
 			});
+			
+			let record1 = BABYLON.Mesh.CreatePlane('recordCover', .25, scene);
+			record1.position = new BABYLON.Vector3(0, 1.25, 0);
+			record1.material = new BABYLON.StandardMaterial('recordCoverMat', scene);;
+			record1.material.emissiveTexture = new BABYLON.Texture('./src/img/chaka-khan.jpg', scene);
+			let record2 = BABYLON.Mesh.CreatePlane('recordCover', .25, scene);
+			record2.position = new BABYLON.Vector3(-.4, 1.25, 0);
+			record2.material = new BABYLON.StandardMaterial('recordCoverMat', scene);;
+			record2.material.emissiveTexture = new BABYLON.Texture('./src/img/greenfields.jpg', scene);
+			let record3 = BABYLON.Mesh.CreatePlane('recordCover', .25, scene);
+			record3.position = new BABYLON.Vector3(.4, 1.25, 0);
+			record3.material = new BABYLON.StandardMaterial('recordCoverMat', scene);;
+			record3.material.emissiveTexture = new BABYLON.Texture('./src/img/quimey-neuquen.jpg', scene);
 		},
 		
 		addButtonEvents: function() {
