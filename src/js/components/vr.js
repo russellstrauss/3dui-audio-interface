@@ -3,7 +3,7 @@ module.exports = function() {
 	var canvas, engine, scene, camera, vrHelper;
 	var leftController, rightController, rightJoystick, leftJoystick, selectedMesh, draggedMesh, scalingRod = {};
 	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0), zBuffer = .01;
-	var record, desk, testPoint, showTestPoints = false;
+	var record, desk, testPoint, showTestPoints = false, timeCursor, timeCursorOrigin, timeCursorFinal;
 	
 	return {
 		
@@ -94,11 +94,17 @@ module.exports = function() {
 				if (desk.vinylPosition && record.inHand) {
 					record.position = rightController.devicePosition.add(rightController.getForwardRay(1).direction.scale(.15));
 					if (gfx.createVector(record.position, desk.vinylPosition).length() < .01) self.startRecord(record);
+					testPoint.position = record.position;
 				}
-				testPoint.position = record.position;
 			}
 			
-			if (record.playing) record.rotate(BABYLON.Axis.Y, .005, BABYLON.Space.WORLD);
+			if (record.playing) {
+				record.rotate(BABYLON.Axis.Y, .005, BABYLON.Space.WORLD);
+				if (timeCursor && record.progress < 1) {
+					timeCursor.position = gfx.createVector(timeCursorOrigin, timeCursorFinal).scale(record.progress);
+				}
+				if (record.audio && record.audio._audioBuffer) record.progress = record.audio._inputAudioNode.context.currentTime / record.audio._audioBuffer.duration;
+			}
 		},
 		
 		startRecord: function(record) {
@@ -110,7 +116,7 @@ module.exports = function() {
 			record.pinhole.material.alpha = 0;
 			rightController.mesh.removeChild(record);
 			setTimeout(function() {
-				self.playSong('./src/audio/greenfields.mp3', 1);
+				record.audio = self.playSong(record.audioPath, 1);
 			}, 1000);
 		},
 		
@@ -142,6 +148,8 @@ module.exports = function() {
 			record.rotate(BABYLON.Axis.X, Math.PI/2, BABYLON.Space.WORLD);
 			record.inHand = true;
 			record.playing = false;
+			record.progress = 0;
+			record.audioPath = './src/audio/greenfields.mp3';
 			
 			console.log(record);
 			record._children.forEach(function(mesh) {
@@ -338,22 +346,27 @@ module.exports = function() {
 			})
 			.then(function(audioBuffer) {
 				let audioStreamSamples = self.getAudioSamples(audioBuffer);
-				
+				let scale = 1.5;
 				let samples = [];
 				let waveformLength = 3;
 				let colors = [];
+				let point = null;
 				for (let i = 0; i < 1000; i++) {
 					let x = -(waveformLength/2) + ((waveformLength/1000) * i); // the dividing by 2 centers in view, then divide into 1000 chunks to get desired length
-					let y = audioStreamSamples[i] + 2;
-					let z = 3;
+					let y = (audioStreamSamples[i] * scale) + 1.25;
+					let z = 1;
+					point = new BABYLON.Vector3(x, y, z);
+					if (i === 0) timeCursorOrigin = point;
 					colors.push(new BABYLON.Color4(0, 1, 0, 1));
-					samples.push(new BABYLON.Vector3(x, y, z));
+					samples.push(point);
 				}
+				timeCursorFinal = point;
 				let audioCurve = new BABYLON.Curve3(samples);
 				let points = audioCurve.getPoints();
 				let path3d = new BABYLON.Path3D(points);
 				let curve = path3d.getCurve();
 				let waveform = BABYLON.Mesh.CreateLines('curve', curve, scene);
+				timeCursor = gfx.createLineFromPoints(gfx.movePoint(timeCursorOrigin, new BABYLON.Vector3(0, 0, -zBuffer)), gfx.movePoint(timeCursorOrigin, new BABYLON.Vector3(0, .3, -zBuffer)), new BABYLON.Color3(1, 0, 0));
 			});
 		},
 		
