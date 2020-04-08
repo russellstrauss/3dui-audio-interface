@@ -3,7 +3,7 @@ module.exports = function() {
 	var canvas, engine, scene, camera, vrHelper;
 	var leftController, rightController, rightJoystick, leftJoystick, selectedMesh, draggedMesh, picked, scalingRod = {};
 	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0), zBuffer = .01;
-	var record, records = [], desk, testPoint, showTestPoints = false, waveform, timeCursor, timeCursorOrigin, timeCursorFinal, record1, record2, record3;
+	var record, records = [], desk, testPoint, showTestPoints = true, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 600, record1, record2, record3;
 	
 	class Record {
 		
@@ -95,7 +95,9 @@ module.exports = function() {
 			});
 			self.setLighting();
 			self.addDesk();
-			self.loadAllSongs();
+			self.loadAssets();
+			
+			self.showSong(record);
 			
 			scene.clearColor = new BABYLON.Color3(0, 0, 0);
 			return scene;
@@ -322,8 +324,12 @@ module.exports = function() {
 		rightTrigger: function(webVRController, stateObject) {
 			
 			let self = this;
-			if (record.audio) record.audio.stop();
 			if (picked && (picked === record1 || picked === record2 || picked === record3)) {
+				
+				if (record.audio) record.audio.stop();
+				if (record.waveform) record.waveform.dispose();
+				record.transformNode.dispose();
+				
 				if (picked === record1) {
 					record = new Record('./src/audio/i-feel-for-you.mp3', './src/img/chaka-khan.jpg');
 				}
@@ -394,17 +400,22 @@ module.exports = function() {
 				return audioContext.decodeAudioData(arrayBuffer);
 			})
 			.then(function(audioBuffer) {
+				
 				let audioStreamSamples = self.getAudioSamples(audioBuffer);
-				let scale = 1.5;
+				let sampleCount = waveformFidelity;
+				let scale = .25;
+				let baseline = 2;
 				let samples = [];
 				let waveformLength = 3;
 				let colors = [];
 				let point = null;
 				let maxHeight = 0;
-				for (let i = 0; i < 1000; i++) {
-					let x = -(waveformLength/2) + ((waveformLength/1000) * i); // the dividing by 2 centers in view, then divide into 1000 chunks to get desired length
-					let y = (audioStreamSamples[i] * scale) + 1.25;
+				let minHeight = 0;
+				for (let i = 0; i < sampleCount; i++) {
+					let x = -(waveformLength/2) + ((waveformLength/sampleCount) * i); // the dividing by 2 centers in view, then divide into sampleCount chunks to get desired length
+					let y = (audioStreamSamples[i] * scale) + baseline;
 					if (y > maxHeight) maxHeight = y;
+					if (y-baseline < minHeight) minHeight = y-baseline;
 					let z = 1;
 					point = new BABYLON.Vector3(x, y, z);
 					if (i === 0) timeCursorOrigin = point;
@@ -416,31 +427,32 @@ module.exports = function() {
 				let points = audioCurve.getPoints();
 				let path3d = new BABYLON.Path3D(points);
 				let curve = path3d.getCurve();
-				if (waveform) waveform.dispose();
-				waveform = BABYLON.Mesh.CreateLines('curve', curve, scene);
+				record.waveform = BABYLON.Mesh.CreateLines('curve', curve, scene);
+				record.waveform.isPickable = false;
 				maxHeight = maxHeight - timeCursorOrigin.y;
-				if(timeCursor) timeCursor.dispose();
-				timeCursor = gfx.createLineFromPoints(gfx.movePoint(timeCursorOrigin, new BABYLON.Vector3(0, 0, -zBuffer)), gfx.movePoint(timeCursorOrigin, new BABYLON.Vector3(0, maxHeight, -zBuffer)), new BABYLON.Color3(1, 0, 0));
+				if (timeCursor) timeCursor.dispose();
+				timeCursor = gfx.createLineFromPoints(gfx.movePoint(timeCursorOrigin, new BABYLON.Vector3(0, minHeight, -zBuffer)), gfx.movePoint(timeCursorOrigin, new BABYLON.Vector3(0, maxHeight, -zBuffer)), new BABYLON.Color3(1, 0, 0));
 			});
 		},
 		
 		getAudioSamples: function(audioBuffer) {
 			let rawData = audioBuffer.getChannelData(0);
-			let samples = 1000;
-			let blockSize = Math.floor(rawData.length / samples);
+			let sampleCount = waveformFidelity;
+			let blockSize = Math.floor(rawData.length / sampleCount);
 			let samplesArray = [];
-			for (let i = 0; i < samples; i++) {
-				let blockStart = blockSize * i;
-				let sum = 0;
-				for (let j = 0; j < blockSize; j++) {
-					sum = sum + Math.abs(rawData[blockStart + j]); // find the sum of all the samples in the block
-				}
-				samplesArray.push(sum / blockSize); // divide the sum by the block size to get the average
+			for (let i = 0; i < sampleCount; i++) {
+				samplesArray.push(rawData[blockSize * i]); // divide the sum by the block size to get the average
 			}
 			return samplesArray;
 		},
 		
-		loadAllSongs: function() {
+		loadAssets: function() {
+			//var assetsManager = new BABYLON.AssetsManager(scene);
+			// var binaryTask1 = assetsManager.addBinaryFileTask('I Feel For You', './src/audio/i-feel-for-you.mp3');
+			// binaryTask1.onSuccess = function (task) {
+			// 	music3 = new BABYLON.Sound('I Feel For You', task.data, scene, { loop: true });
+			// }
+			
 			record = new Record('./src/audio/i-feel-for-you.mp3', './src/img/chaka-khan.jpg');
 			records.push(record);
 			record = new Record('./src/audio/greenfields.mp3', './src/img/greenfields.jpg');
