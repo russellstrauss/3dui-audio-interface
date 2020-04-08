@@ -52,7 +52,7 @@ module.exports = function() {
 			self.setLighting();
 			self.addDesk();
 			
-			self.showAudioSamples('./src/audio/greenfields.mp3');
+			self.showAudioSamples('./src/audio/quimey-neuquen.mp3');
 			
 			scene.clearColor = new BABYLON.Color3(0, 0, 0);
 			return scene;
@@ -149,7 +149,7 @@ module.exports = function() {
 			record.inHand = true;
 			record.playing = false;
 			record.progress = 0;
-			record.audioPath = './src/audio/greenfields.mp3';
+			record.audioPath = './src/audio/quimey-neuquen.mp3';
 			
 			console.log(record);
 			record._children.forEach(function(mesh) {
@@ -351,9 +351,11 @@ module.exports = function() {
 				let waveformLength = 3;
 				let colors = [];
 				let point = null;
+				let maxHeight = 0;
 				for (let i = 0; i < 1000; i++) {
 					let x = -(waveformLength/2) + ((waveformLength/1000) * i); // the dividing by 2 centers in view, then divide into 1000 chunks to get desired length
 					let y = (audioStreamSamples[i] * scale) + 1.25;
+					if (y > maxHeight) maxHeight = y;
 					let z = 1;
 					point = new BABYLON.Vector3(x, y, z);
 					if (i === 0) timeCursorOrigin = point;
@@ -366,7 +368,8 @@ module.exports = function() {
 				let path3d = new BABYLON.Path3D(points);
 				let curve = path3d.getCurve();
 				let waveform = BABYLON.Mesh.CreateLines('curve', curve, scene);
-				timeCursor = gfx.createLineFromPoints(gfx.movePoint(timeCursorOrigin, new BABYLON.Vector3(0, 0, -zBuffer)), gfx.movePoint(timeCursorOrigin, new BABYLON.Vector3(0, .3, -zBuffer)), new BABYLON.Color3(1, 0, 0));
+				maxHeight = maxHeight - timeCursorOrigin.y;
+				timeCursor = gfx.createLineFromPoints(gfx.movePoint(timeCursorOrigin, new BABYLON.Vector3(0, 0, -zBuffer)), gfx.movePoint(timeCursorOrigin, new BABYLON.Vector3(0, maxHeight, -zBuffer)), new BABYLON.Color3(1, 0, 0));
 			});
 		},
 		
