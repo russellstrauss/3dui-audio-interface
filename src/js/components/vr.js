@@ -1,78 +1,26 @@
 module.exports = function() {
 	
 	var canvas, engine, scene, camera, vrHelper;
-	var leftController, rightController, rightJoystick, leftJoystick, selectedMesh, draggedMesh, picked, scalingRod = {};
+	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, scalingRod = {};
 	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0), zBuffer = .01;
-	var record, records = [], desk, testPoint, showTestPoints = true, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 600, record1, record2, record3;
+	var record, records = [], desk, testPoint, showTestPoints = false, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 1000, record1, record2, record3, chakaRecord, greenfieldsRecord, quimeyRecord;
 	
-	class Record {
-		
-		constructor(audioPath, albumCover) {
-			this.transformNode = new BABYLON.TransformNode();
-			let disc = BABYLON.MeshBuilder.CreateDisc('record', { radius: .8, tessellation: 40, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
-			disc.parent = this.transformNode;
-			disc.material = new BABYLON.StandardMaterial('discMat', scene);
-			disc.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
-			disc.position = new BABYLON.Vector3(0, 0, 0);
-			disc.rotate(BABYLON.Axis.X, Math.PI, BABYLON.Space.WORLD);
-			let recordLabel = BABYLON.MeshBuilder.CreateDisc('record', { radius: .3, tessellation: 40, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
-			recordLabel.parent = this.transformNode;
-			recordLabel.material = new BABYLON.StandardMaterial('innderDiscMat', scene);
-			recordLabel.material.emissiveColor = new BABYLON.Color3.Red;
-			recordLabel.position = new BABYLON.Vector3(0, 0, -zBuffer);
-			let recordLabelBack = recordLabel.clone();
-			recordLabelBack.position = new BABYLON.Vector3(0, 0, zBuffer);
-			let recordPinhole = disc.clone();
-			this.pinhole = recordPinhole;
-			recordPinhole.parent = this.transformNode;
-			recordPinhole.scaling = new BABYLON.Vector3(.03, .03, .03);
-			recordPinhole.position = new BABYLON.Vector3(0, 0, zBuffer*2);
-			recordPinhole.clone().position = new BABYLON.Vector3(0, 0, -zBuffer*2);
-			this.transformNode.scaling = new BABYLON.Vector3(.2, .2, .2);
-			this.transformNode.rotate(BABYLON.Axis.X, Math.PI/2, BABYLON.Space.WORLD);
-			this.inHand = false;
-			this.playing = false;
-			this.progress = 0;
-			this.audioPath = audioPath;
-			
-			this.transformNode._children.forEach(function(mesh) {
-				mesh.isPickable = false;
-			});
-			
-		}
-		
-		dispose() {
-			console.log('dispose record');
-			this.transformNode._children.forEach(function(mesh) {
-				mesh.dispose();
-			});
-		}
-	}
-	
-	return {
+	let methods = {
 		
 		init: function() {
-			
 			let self = this;
 			canvas = document.getElementById('renderCanvas');
-
-			var createDefaultEngine = function () {
-				return new BABYLON.Engine(canvas, true, {
-					preserveDrawingBuffer: true,
-					stencil: true
-				});
-			};
-			
-			engine = createDefaultEngine();
+			engine = new BABYLON.Engine(canvas, true, {
+				preserveDrawingBuffer: true,
+				stencil: true
+			});
 			scene = self.createScene();
-			
 			engine.runRenderLoop(function () {
 				if (scene) {
 					scene.render();
 					self.everyFrame();
 				}
 			});
-
 			window.addEventListener('resize', function () {
 				engine.resize();
 			});
@@ -97,7 +45,27 @@ module.exports = function() {
 			self.addDesk();
 			self.loadAssets();
 			
-			self.showSong(record);
+			scene.onPointerDown = function (evt, pickResult) { // click
+				if (pickResult.hit) {
+					picked = pickResult.pickedMesh;
+					self.selectRecord(picked);
+				}
+			};
+			
+			document.addEventListener('keyup', function(event) {
+				let space = 32;
+				if (event.keyCode === space) {
+					if (record.audio.isPaused) {
+						record.audio.play();
+					}
+					else if (record.audio.isPlaying) {
+						record.audio.pause();
+					}
+					else {
+						self.startRecord(record);
+					}
+				}
+			});
 			
 			scene.clearColor = new BABYLON.Color3(0, 0, 0);
 			return scene;
@@ -129,6 +97,8 @@ module.exports = function() {
 			// TODO: figure out how to get the current progress of the music passed in.
 			// Length of the music should be music._length, so in theory this should just  
 			// return currentProgress / totalLength;
+			
+			return (music.audio._inputAudioNode.context.currentTime - music.audio._startTime + music.audio._startOffset) / music.audio._audioBuffer.duration; //edit as needed
 		},
 		
 		everyFrame: function() {
@@ -138,47 +108,51 @@ module.exports = function() {
 				
 				if (desk.vinylPosition && record.inHand) {
 					record.transformNode.position = leftController.devicePosition.add(leftController.getForwardRay(1).direction.scale(.15));
-					if (gfx.createVector(record.transformNode.position, desk.vinylPosition).length() < .01) self.startRecord(record);
-					// testPoint.position = record.transformNode.position;
+					if (gfx.createVector(record.transformNode.position, desk.vinylPosition).length() < .05) self.startRecord(record);
 				}
 			}
 			
-			if (record.playing) {
+			if (record && record.audio.isPlaying) {
+				
 				record.transformNode.rotate(BABYLON.Axis.Y, .005, BABYLON.Space.WORLD);
 				if (timeCursor && record.progress < 1) {
-					timeCursor.position = gfx.createVector(timeCursorOrigin, timeCursorFinal).scale(record.progress);
+					timeCursor.position = gfx.createVector(record.timeCursorOrigin, record.timeCursorFinal).scale(record.progress);
 				}
-				if (record.audio && record.audio._audioBuffer) record.progress = record.audio._inputAudioNode.context.currentTime / record.audio._audioBuffer.duration;
+				if (record.audio && record.audio._audioBuffer) {
+					record.progress = (record.audio._inputAudioNode.context.currentTime - record.audio._startTime + record.audio._startOffset) / record.audio._audioBuffer.duration;
+				}
 			}
 		},
 		
 		startRecord: function(record) {
 			let self = this;
-			record.progress = 0;
+			record.audio.stop();
 			record.inHand = false;
 			record.transformNode.position = desk.vinylPosition;
-			record.playing = true;
 			record.pinhole.material.alpha = 0;
-			rightController.mesh.removeChild(record.transformNode);
+			if (rightController) rightController.mesh.removeChild(record.transformNode);
 			
-			setTimeout(function() {
-				record.audio = self.playSong(record.audioPath, 1);
-			}, 500);
+			//setTimeout(function() {
+				record.audio.play(0, 0);
+			//}, 500);
 		},
 		
 		showSong: function(record) {
-			console.log(records.length)
 			records.forEach(function(thisRecord) {
 				thisRecord.dispose();
+				thisRecord.waveform.visibility = 0;
 			});
-			this.showAudioSamples(record);
+			
+			if (timeCursor) timeCursor.dispose();
+			timeCursor = gfx.createLineFromPoints(gfx.movePoint(record.timeCursorOrigin, new BABYLON.Vector3(0, record.waveform.minHeight, -zBuffer)), gfx.movePoint(record.timeCursorOrigin, new BABYLON.Vector3(0, record.waveform.maxHeight, -zBuffer)), new BABYLON.Color3(1, 0, 0));
+			
+			testPoint.position = record.timeCursorOrigin;
+			record.waveform.visibility = 1;
 		},
 		
 		addDesk: function() {
 			
 			BABYLON.OBJFileLoader.MATERIAL_LOADING_FAILS_SILENTLY = false;
-			
-			record = new Record('./src/audio/i-feel-for-you.mp3', './src/img/chaka-khan.jpg');
 			
 			desk = new BABYLON.TransformNode();
 			BABYLON.OBJFileLoader.OPTIMIZE_WITH_UV = true;
@@ -211,15 +185,15 @@ module.exports = function() {
 			});
 			
 			record1 = BABYLON.Mesh.CreatePlane('recordCover', .25, scene);
-			record1.position = new BABYLON.Vector3(0, 1, .75);
+			record1.position = new BABYLON.Vector3(0, 1.5, .75);
 			record1.material = new BABYLON.StandardMaterial('recordCoverMat', scene);;
 			record1.material.emissiveTexture = new BABYLON.Texture('./src/img/chaka-khan.jpg', scene);
 			record2 = BABYLON.Mesh.CreatePlane('recordCover', .25, scene);
-			record2.position = new BABYLON.Vector3(-.4, 1, .75);
+			record2.position = new BABYLON.Vector3(-.4, 1.5, .75);
 			record2.material = new BABYLON.StandardMaterial('recordCoverMat', scene);;
 			record2.material.emissiveTexture = new BABYLON.Texture('./src/img/greenfields.jpg', scene);
 			record3 = BABYLON.Mesh.CreatePlane('recordCover', .25, scene);
-			record3.position = new BABYLON.Vector3(.4, 1, .75);
+			record3.position = new BABYLON.Vector3(.4, 1.5, .75);
 			record3.material = new BABYLON.StandardMaterial('recordCoverMat', scene);;
 			record3.material.emissiveTexture = new BABYLON.Texture('./src/img/quimey-neuquen.jpg', scene);
 		},
@@ -316,32 +290,40 @@ module.exports = function() {
 			});
 		},
 		
-		leftY: function(webVRController) {},
+		selectRecord: function(picked) {
+			let self = this;
+			if (picked && (picked === record1 || picked === record2 || picked === record3)) {
+				
+				if (record.audio) {
+					record.audio.stop();
+					record.audio.pause();
+				}
+				record.transformNode.dispose();
+				
+				if (picked === record1) {
+					record = chakaRecord;
+				}
+				else if (picked === record2) {
+					record = greenfieldsRecord;
+				}
+				else if (picked === record3) {
+					record = quimeyRecord;
+				}
+				record.inHand = true;
+				self.showSong(record);
+			}
+		},
+		
+		leftY: function(webVRController) {
+			this.startRecord(record);
+		},
 		leftX: function(webVRController) {},
 		rightA: function(webVRController) {},
 		rightB: function(webVRController) {},
 		leftTrigger: function(webVRController) {},
 		rightTrigger: function(webVRController, stateObject) {
 			
-			let self = this;
-			if (picked && (picked === record1 || picked === record2 || picked === record3)) {
-				
-				if (record.audio) record.audio.stop();
-				if (record.waveform) record.waveform.dispose();
-				record.transformNode.dispose();
-				
-				if (picked === record1) {
-					record = new Record('./src/audio/i-feel-for-you.mp3', './src/img/chaka-khan.jpg');
-				}
-				else if (picked === record2) {
-					record = new Record('./src/audio/greenfields.mp3', './src/img/greenfields.jpg');
-				}
-				else if (picked === record3) {
-					record = new Record('./src/audio/quimey-neuquen.mp3', './src/img/quimey-neuquen.jpg');
-				}
-				record.inHand = true;
-				self.showSong(record);
-			}
+			this.selectRecord(picked);
 		},
 		rightTriggerRelease: function() {},
 		leftSecondaryTrigger: function(webVRController) {
@@ -388,54 +370,125 @@ module.exports = function() {
 			let ground = BABYLON.MeshBuilder.CreateGround('ground', { height: 20, width: 20, subdivisions: 4, isPickable: false }, scene);
 		},
 		
-		showAudioSamples: function(record) {
+		loadAssets: function() {
+			
+			let assetsManager = new BABYLON.AssetsManager(scene);
+			assetsManager.addBinaryFileTask('i-feel-for-you', './src/audio/i-feel-for-you.mp3').albumCover = './src/img/chaka-khan.jpg';
+			assetsManager.addBinaryFileTask('greenfields', './src/audio/greenfields.mp3').albumCover = './src/img/greenfields.jpg';
+			assetsManager.addBinaryFileTask('quimey-neuquen', './src/audio/quimey-neuquen.mp3').albumCover = './src/img/quimey-neuquen.jpg';
+			assetsManager._tasks.forEach(function(task) {
+				task.onSuccess = function(thisTask) {
+					let thisRecord = new Record(thisTask.url, thisTask.albumCover);
+					records.push(thisRecord);
+					record = thisRecord;
+					
+					if (thisTask.url === './src/audio/i-feel-for-you.mp3') { // restructure to remove hardcoded vars
+						chakaRecord = thisRecord;
+					}
+					if (thisTask.url === './src/audio/greenfields.mp3') {
+						greenfieldsRecord = thisRecord;
+					}
+					if (thisTask.url === './src/audio/quimey-neuquen.mp3') {
+						quimeyRecord = thisRecord;
+					}
+				};
+			});
+			assetsManager.load();
+		}
+	};
+	
+	class Record {
+		
+		constructor(audioPath, albumCover) {
+			let self = this;
+			this.transformNode = new BABYLON.TransformNode();
+			let disc = BABYLON.MeshBuilder.CreateDisc('record', { radius: .8, tessellation: 40, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
+			disc.parent = this.transformNode;
+			disc.material = new BABYLON.StandardMaterial('discMat', scene);
+			disc.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
+			disc.position = new BABYLON.Vector3(0, 0, 0);
+			disc.rotate(BABYLON.Axis.X, Math.PI, BABYLON.Space.WORLD);
+			let recordLabel = BABYLON.MeshBuilder.CreateDisc('record', { radius: .3, tessellation: 40, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
+			recordLabel.parent = this.transformNode;
+			recordLabel.material = new BABYLON.StandardMaterial('innderDiscMat', scene);
+			recordLabel.material.emissiveColor = new BABYLON.Color3.Red;
+			recordLabel.position = new BABYLON.Vector3(0, 0, -zBuffer);
+			let recordLabelBack = recordLabel.clone();
+			recordLabelBack.position = new BABYLON.Vector3(0, 0, zBuffer);
+			let recordPinhole = disc.clone();
+			this.pinhole = recordPinhole;
+			recordPinhole.parent = this.transformNode;
+			recordPinhole.scaling = new BABYLON.Vector3(.03, .03, .03);
+			recordPinhole.position = new BABYLON.Vector3(0, 0, zBuffer*2);
+			recordPinhole.clone().position = new BABYLON.Vector3(0, 0, -zBuffer*2);
+			this.transformNode.scaling = new BABYLON.Vector3(.2, .2, .2);
+			this.transformNode.rotate(BABYLON.Axis.X, Math.PI/2, BABYLON.Space.WORLD);
+			this.inHand = false;
+			this.progress = 0;
+			this.audioPath = audioPath;
+			this.albumCover = albumCover;
+			this.audio = new BABYLON.Sound('Music', this.audioPath, scene, function() { //on audio buffer loaded
+				self.audioBuffer = self.audio._audioBuffer;
+				self.waveform = self.createAudioSamples();
+				self.waveform.visibility = 0;
+			},
+			{ // sound options
+				loop: false,
+				autoplay: false,
+				useCustomAttenuation: true
+			});
+			
+			this.transformNode._children.forEach(function(mesh) {
+				mesh.isPickable = false;
+			});
+			
+		}
+		
+		dispose() {
+			this.transformNode._children.forEach(function(mesh) {
+				mesh.dispose();
+			});
+		}
+		
+		createAudioSamples() {
 			
 			let self = this;
-			window.AudioContext = window.AudioContext || window.webkitAudioContext;
-			let audioContext = new AudioContext();
-			fetch(record.audioPath).then(function(response){
-				return response.arrayBuffer();
-			})
-			.then(function(arrayBuffer) {
-				return audioContext.decodeAudioData(arrayBuffer);
-			})
-			.then(function(audioBuffer) {
-				
-				let audioStreamSamples = self.getAudioSamples(audioBuffer);
-				let sampleCount = waveformFidelity;
-				let scale = .25;
-				let baseline = 2;
-				let samples = [];
-				let waveformLength = 3;
-				let colors = [];
-				let point = null;
-				let maxHeight = 0;
-				let minHeight = 0;
-				for (let i = 0; i < sampleCount; i++) {
-					let x = -(waveformLength/2) + ((waveformLength/sampleCount) * i); // the dividing by 2 centers in view, then divide into sampleCount chunks to get desired length
-					let y = (audioStreamSamples[i] * scale) + baseline;
-					if (y > maxHeight) maxHeight = y;
-					if (y-baseline < minHeight) minHeight = y-baseline;
-					let z = 1;
-					point = new BABYLON.Vector3(x, y, z);
-					if (i === 0) timeCursorOrigin = point;
-					colors.push(new BABYLON.Color4(0, 1, 0, 1));
-					samples.push(point);
-				}
-				timeCursorFinal = point;
-				let audioCurve = new BABYLON.Curve3(samples);
-				let points = audioCurve.getPoints();
-				let path3d = new BABYLON.Path3D(points);
-				let curve = path3d.getCurve();
-				record.waveform = BABYLON.Mesh.CreateLines('curve', curve, scene);
-				record.waveform.isPickable = false;
-				maxHeight = maxHeight - timeCursorOrigin.y;
-				if (timeCursor) timeCursor.dispose();
-				timeCursor = gfx.createLineFromPoints(gfx.movePoint(timeCursorOrigin, new BABYLON.Vector3(0, minHeight, -zBuffer)), gfx.movePoint(timeCursorOrigin, new BABYLON.Vector3(0, maxHeight, -zBuffer)), new BABYLON.Color3(1, 0, 0));
-			});
-		},
+			let audioStreamSamples = self.getAudioSamples(this.audioBuffer);
+			let sampleCount = waveformFidelity;
+			let scale = .25;
+			let baseline = 2;
+			let samples = [];
+			let waveformLength = 3;
+			let colors = [];
+			let point = null;
+			let maxHeight = 0;
+			let minHeight = 0;
+			for (let i = 0; i < sampleCount; i++) {
+				let x = -(waveformLength/2) + ((waveformLength/sampleCount) * i); // the dividing by 2 centers in view, then divide into sampleCount chunks to get desired length
+				let y = (audioStreamSamples[i] * scale) + baseline;
+				if (y > maxHeight) maxHeight = y;
+				if (y-baseline < minHeight) minHeight = y-baseline;
+				let z = 1;
+				point = new BABYLON.Vector3(x, y, z);
+				if (i === 0) timeCursorOrigin = point;
+				colors.push(new BABYLON.Color4(0, 1, 0, 1));
+				samples.push(point);
+			}
+			timeCursorFinal = point;
+			let audioCurve = new BABYLON.Curve3(samples);
+			let points = audioCurve.getPoints();
+			let path3d = new BABYLON.Path3D(points);
+			let curve = path3d.getCurve();
+			let waveform = BABYLON.Mesh.CreateLines('curve', curve, scene);
+			waveform.isPickable = false;
+			maxHeight = maxHeight - timeCursorOrigin.y;
+			self.timeCursorOrigin = timeCursorOrigin, self.timeCursorFinal = timeCursorFinal;
+			waveform.minHeight = minHeight;
+			waveform.maxHeight = maxHeight;
+			return waveform;
+		}
 		
-		getAudioSamples: function(audioBuffer) {
+		getAudioSamples(audioBuffer) {
 			let rawData = audioBuffer.getChannelData(0);
 			let sampleCount = waveformFidelity;
 			let blockSize = Math.floor(rawData.length / sampleCount);
@@ -444,21 +497,8 @@ module.exports = function() {
 				samplesArray.push(rawData[blockSize * i]); // divide the sum by the block size to get the average
 			}
 			return samplesArray;
-		},
-		
-		loadAssets: function() {
-			//var assetsManager = new BABYLON.AssetsManager(scene);
-			// var binaryTask1 = assetsManager.addBinaryFileTask('I Feel For You', './src/audio/i-feel-for-you.mp3');
-			// binaryTask1.onSuccess = function (task) {
-			// 	music3 = new BABYLON.Sound('I Feel For You', task.data, scene, { loop: true });
-			// }
-			
-			record = new Record('./src/audio/i-feel-for-you.mp3', './src/img/chaka-khan.jpg');
-			records.push(record);
-			record = new Record('./src/audio/greenfields.mp3', './src/img/greenfields.jpg');
-			records.push(record);
-			record = new Record('./src/audio/quimey-neuquen.mp3', './src/img/quimey-neuquen.jpg');
-			records.push(record);
 		}
 	}
+	
+	return methods;
 }
