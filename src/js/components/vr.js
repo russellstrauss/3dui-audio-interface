@@ -1,14 +1,19 @@
+var StartAudioContext = require('startaudiocontext');
+var pizzicato = require('pizzicato');
+var howler = require('howler');
+
 module.exports = function() {
 	
 	var canvas, engine, scene, camera, vrHelper;
 	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, scalingRod = {};
 	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0), zBuffer = .01;
-	var record, records = [], desk, testPoint, showTestPoints = false, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 1000, albumCount = 0;
+	var record, records = [], desk, testPoint, showTestPoints = false, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 1000, albumCount = 0, vinylStart;
 	
 	let methods = {
 		
 		init: function() {
 			let self = this;
+			
 			canvas = document.getElementById('renderCanvas');
 			engine = new BABYLON.Engine(canvas, true, {
 				preserveDrawingBuffer: true,
@@ -55,12 +60,12 @@ module.exports = function() {
 			document.addEventListener('keyup', function(event) {
 				let space = 32;
 				if (event.keyCode === space && record) {
-					
-					if (record.audio.isPaused) {
+					if (record.paused) {
 						record.audio.play();
 					}
-					else if (record.audio.isPlaying) {
+					else if (record.audio.playing()) {
 						record.audio.pause();
+						if (vinylStart) vinylStart.stop();
 					}
 					else {
 						self.startRecord(record);
@@ -112,15 +117,14 @@ module.exports = function() {
 					if (gfx.createVector(record.transformNode.position, desk.vinylPosition).length() < .02) self.startRecord(record);
 				}
 			}
-			
-			if (record && record.audio.isPlaying) {
+			if (record && record.spinning)record.transformNode.rotate(BABYLON.Axis.Y, .005, BABYLON.Space.WORLD);
+			if (record && record.audio.playing()) {
 				
-				record.transformNode.rotate(BABYLON.Axis.Y, .005, BABYLON.Space.WORLD);
 				if (timeCursor && record.progress < 1) {
 					timeCursor.position = gfx.createVector(record.timeCursorOrigin, record.timeCursorFinal).scale(record.progress);
 				}
-				if (record.audio && record.audio._audioBuffer) {
-					record.progress = (record.audio._inputAudioNode.context.currentTime - record.audio._startTime + record.audio._startOffset) / record.audio._audioBuffer.duration;
+				if (record.audio) {
+					record.progress = record.audio.seek() / record.audio.duration();
 				}
 			}
 		},
@@ -130,13 +134,14 @@ module.exports = function() {
 			record.audio.stop();
 			record.inHand = false;
 			record.transformNode.position = desk.vinylPosition;
-			//record.pinhole.material.alpha = 0;
 			if (rightController) rightController.mesh.removeChild(record.transformNode);
-			// self.playSong('./src/audio/vinyl-start.wav', 1);
-			// console.log('record start');
-			// setTimeout(function() {
-			// }, 1500);
-			record.audio.play(0, 0);
+
+			if (vinylStart) vinylStart.play();
+			record.spinning = true;
+			
+			setTimeout(function() {
+				record.audio.play();
+			}, 500);
 		},
 		
 		showSong: function(record) {
@@ -195,9 +200,9 @@ module.exports = function() {
 			self.deactivateTeleportation();
 			vrHelper.teleportationTarget = BABYLON.Mesh.CreateSphere('ground', 4, 0.05, scene);
 			vrHelper._teleportBackwardsVector = new BABYLON.Vector3(0, -.1, -.1);
-			console.log('vrHelper: ', vrHelper);
+			//console.log('vrHelper: ', vrHelper);
 			
-			vrHelper.onNewMeshPicked.add(pickingInfo => { // where controller is resting/pointing
+			vrHelper.onNewMeshPicked.add(pickingInfo => { // where controller is resting/pointing, fired upon new target
 				picked = pickingInfo.pickedMesh;
 			});
 			
@@ -210,7 +215,6 @@ module.exports = function() {
 				if (webVRController.hand === 'right') {
 					vrHelper._rightController._laserPointer._isEnabled = false;
 					rightController = webVRController;
-					// rightController.mesh.addChild(record);
 				}
 				
 				if (leftController && webVRController === leftController) {
@@ -283,7 +287,6 @@ module.exports = function() {
 				
 				if (record && record.audio) {
 					record.audio.stop();
-					record.audio.pause();
 				}
 				if (record && record.transformNode) record.transformNode.dispose();
 				
@@ -297,14 +300,7 @@ module.exports = function() {
 			}
 		},
 		
-		leftY: function(webVRController) {
-			if (record.audio.isPaused) {
-				record.audio.play();
-			}
-			else if (record.audio.isPlaying) {
-				record.audio.pause();
-			}
-		},
+		leftY: function(webVRController) {},
 		leftX: function(webVRController) {},
 		rightA: function(webVRController) {},
 		rightB: function(webVRController) {},
@@ -361,12 +357,19 @@ module.exports = function() {
 		loadAssets: function() {
 			let self = this;
 			let assetsManager = new BABYLON.AssetsManager(scene);
+			vinylStart = new Howl({
+				src: ['./src/audio/vinyl-start.wav'],
+				preload: true,
+				autoplay: false
+			});
 			assetsManager.addBinaryFileTask('i-feel-for-you', './src/audio/i-feel-for-you.mp3').albumCover = './src/img/chaka-khan.jpg';
 			assetsManager.addBinaryFileTask('greenfields', './src/audio/greenfields.mp3').albumCover = './src/img/greenfields.jpg';
 			assetsManager.addBinaryFileTask('quimey-neuquen', './src/audio/quimey-neuquen.mp3').albumCover = './src/img/quimey-neuquen.jpg';
+			
 			assetsManager._tasks.forEach(function(task) {
 				task.onSuccess = function(thisTask) {
 					records.push(new Record(thisTask.url, thisTask.albumCover));
+					StartAudioContext(Howler.ctx);
 				};
 			});
 			assetsManager.load();
@@ -382,16 +385,40 @@ module.exports = function() {
 			this.progress = 0;
 			this.audioPath = audioPath;
 			this.albumCover = albumCover;
-			this.audio = new BABYLON.Sound('Music', this.audioPath, scene, function() { //on audio buffer loaded
-				self.audioBuffer = self.audio._audioBuffer;
+			this.paused = false;
+			this.spinning = false;
+			
+			this.babylonAudio = new BABYLON.Sound('Music', this.audioPath, scene, function() { //on audio buffer loaded
+				self.audioBuffer = self.babylonAudio._audioBuffer;
 				self.waveform = self.createAudioSamples();
 				self.waveform.visibility = 0;
 				self.addAlbumCover();
+				StartAudioContext(self.babylonAudio._inputAudioNode.context);
 			},
 			{ // sound options
 				loop: false,
 				autoplay: false,
 				useCustomAttenuation: true
+			});
+			this.audio = new Howl({
+				src: [self.audioPath],
+				preload: true,
+				autoplay: false,
+				onload: function() {
+					
+				},
+				onpause: function() {
+					self.paused = true;
+					self.spinning = false;
+				},
+				onplay: function() {
+					self.paused = false;
+					self.spinning = true;
+				},
+				onstop: function() {
+					self.paused = false;
+					self.spinning = false;
+				}
 			});
 			return this;
 		}
@@ -407,7 +434,6 @@ module.exports = function() {
 			let recordLabelBack = recordLabel.clone();
 			recordLabelBack.position = new BABYLON.Vector3(0, -zBuffer, zBuffer);
 			let vinyl = BABYLON.MeshBuilder.CreateDisc('record', { radius: .9, tessellation: 6, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
-			//this.pinhole = recordPinhole;
 			vinyl.rotate(BABYLON.Axis.X, Math.PI/2, BABYLON.Space.WORLD);
 			vinyl.parent = this.transformNode;
 			vinyl.position = new BABYLON.Vector3(0, 0, 0);
