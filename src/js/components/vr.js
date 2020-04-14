@@ -95,18 +95,35 @@ module.exports = function () {
 					let outOfRange = gfx.createVector(fader.origin, fader.box.position).length() < fader.range;
 					if (outOfRange) displacement = displacement.normalize().scale(fader.range);
 					fader.box.position.z += displacement.z;
-					//if (showVector) showVector.dispose();
+					if (showVector) showVector.dispose();
 					showVector = gfx.createLine(fader.origin, displacement, new BABYLON.Color3(1, 0, 0));
 				}
 			}
 			if (record && record.spinning) record.transformNode.rotate(BABYLON.Axis.Y, .005, BABYLON.Space.WORLD);
 			if (record && record.playing) {
-				
 				if (timeCursor && record.progress < 1) {
 					timeCursor.position = gfx.createVector(record.timeCursorOrigin, record.timeCursorFinal).scale(record.progress);
 				}
 				if (record.audio) {
 					record.progress = record.audio.seek() / record.audio.duration();
+				}
+			}
+			
+			if (beginTurning) {
+				if (intersectedRecord) {
+
+					var changeInPlayback = self.calculatePlaybackRate(leftStarterPosition.clone(), leftControllerPosition.clone());
+
+					if (changeInPlayback != 0) {
+						intersectedRecord.playbackRate += changeInPlayback;
+						console.log(intersectedRecord.playbackRate);
+						if (intersectedRecord.playing) {
+							//changePlayback Rate of the music based on what is in the record
+						}
+						leftStarterPosition = leftControllerPosition.clone();
+
+						//beginTurning = false;
+					}
 				}
 			}
 		},
@@ -153,46 +170,6 @@ module.exports = function () {
 			// return currentProgress / totalLength;
 
 			return;
-		},
-
-		everyFrame: function () {
-
-			let self = this;
-			if (rightController && leftController) {
-
-				if (record && desk.vinylPosition && record.inHand) {
-					record.transformNode.position = leftController.devicePosition.add(leftController.getForwardRay(1).direction.scale(.25));
-					if (gfx.createVector(record.transformNode.position, desk.vinylPosition).length() < .02) self.startRecord(record);
-				}
-			}
-			if (record && record.spinning) record.transformNode.rotate(BABYLON.Axis.Y, .005, BABYLON.Space.WORLD);
-			if (record && record.playing) {
-
-				if (timeCursor && record.progress < 1) {
-					timeCursor.position = gfx.createVector(record.timeCursorOrigin, record.timeCursorFinal).scale(record.progress);
-				}
-				if (record.audio) {
-					record.progress = record.audio.seek() / record.audio.duration();
-				}
-			}
-
-			if (beginTurning) {
-				if (intersectedRecord) {
-
-					var changeInPlayback = self.calculatePlaybackRate(leftStarterPosition.clone(), leftControllerPosition.clone());
-
-					if (changeInPlayback != 0) {
-						intersectedRecord.playbackRate += changeInPlayback;
-						console.log(intersectedRecord.playbackRate);
-						if (intersectedRecord.playing) {
-							//changePlayback Rate of the music based on what is in the record
-						}
-						leftStarterPosition = leftControllerPosition.clone();
-
-						//beginTurning = false;
-					}
-				}
-			}
 		},
 
 		calculatePlaybackRate(oldPos, newPos) {
