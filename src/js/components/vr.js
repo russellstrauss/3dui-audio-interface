@@ -16,7 +16,6 @@ module.exports = function() {
 		
 		init: function() {
 			let self = this;
-			
 			canvas = document.getElementById('renderCanvas');
 			engine = new BABYLON.Engine(canvas, true, {
 				preserveDrawingBuffer: true,
@@ -74,6 +73,37 @@ module.exports = function() {
 			return scene;
 		},
 		
+		everyFrame: function() {
+			
+			let self = this;
+			if (rightController && leftController) {
+				
+				if (record && desk.vinylPosition && record.inHand) {
+					record.transformNode.position = leftController.devicePosition.add(leftController.getForwardRay(1).direction.scale(.25));
+					if (gfx.createVector(record.transformNode.position, desk.vinylPosition).length() < .02) self.startRecord(record);
+				}
+				
+				if (fader && fader.dragging) {
+					let displacement = gfx.createVector(fader.dragStart, rightController.devicePosition)
+					let outOfRange = displacement.length() > fader.range;
+					if (outOfRange) displacement = displacement.normalize().scale(fader.range);
+					console.log('displacement.length(): ', displacement.length());
+					console.log('fader.range: ', fader.range);
+					fader.box.position.z = displacement.z;
+				}
+			}
+			if (record && record.spinning) record.transformNode.rotate(BABYLON.Axis.Y, .005, BABYLON.Space.WORLD);
+			if (record && record.playing) {
+				
+				if (timeCursor && record.progress < 1) {
+					timeCursor.position = gfx.createVector(record.timeCursorOrigin, record.timeCursorFinal).scale(record.progress);
+				}
+				if (record.audio) {
+					record.progress = record.audio.seek() / record.audio.duration();
+				}
+			}
+		},
+		
 		togglePlay: function() {
 			let self = this;
 			if (record.paused) {
@@ -116,34 +146,6 @@ module.exports = function() {
 			// return currentProgress / totalLength;
 			
 			return;
-		},
-		
-		everyFrame: function() {
-			
-			let self = this;
-			if (rightController && leftController) {
-				
-				if (record && desk.vinylPosition && record.inHand) {
-					record.transformNode.position = leftController.devicePosition.add(leftController.getForwardRay(1).direction.scale(.25));
-					if (gfx.createVector(record.transformNode.position, desk.vinylPosition).length() < .02) self.startRecord(record);
-				}
-				
-				if (fader && fader.dragging) {
-					let displacement = gfx.createVector(fader.dragStart, rightController.devicePosition);
-					if (displacement.length() > 1) displacement.normalize();
-					fader.box.position.z = gfx.createVector(fader.dragStart, rightController.devicePosition).z;
-				}
-			}
-			if (record && record.spinning) record.transformNode.rotate(BABYLON.Axis.Y, .005, BABYLON.Space.WORLD);
-			if (record && record.playing) {
-				
-				if (timeCursor && record.progress < 1) {
-					timeCursor.position = gfx.createVector(record.timeCursorOrigin, record.timeCursorFinal).scale(record.progress);
-				}
-				if (record.audio) {
-					record.progress = record.audio.seek() / record.audio.duration();
-				}
-			}
 		},
 		
 		startRecord: function(record) {
@@ -207,7 +209,7 @@ module.exports = function() {
 			vrHelper.onNewMeshPicked.add(function(pickingInfo) { // where controller is resting/pointing, fired upon new target
 				picked = pickingInfo.pickedMesh;
 				
-				if (lastPicked && typeof lastPicked.getParent !== 'undefined' && lastPicked.getParent() instanceof LevelFader) lastPicked.getParent().unhighlight();
+				if (lastPicked && typeof lastPicked.getParent !== 'undefined' && lastPicked.getParent() instanceof LevelFader && !lastPicked.getParent().dragging) lastPicked.getParent().unhighlight();
 				if (typeof picked.getParent !== 'undefined' && picked.getParent() instanceof LevelFader) picked.getParent().highlight();
 				lastPicked = picked;
 			});
@@ -316,10 +318,10 @@ module.exports = function() {
 			if (picked.name === 'albumCover') self.selectRecord(picked);
 			
 			if (typeof picked.getParent !== 'undefined' && picked.getParent() instanceof LevelFader) {
-				console.log('right trigger');
 				fader = picked.getParent();
 				if (!fader.dragging) fader.startDrag(rightController.devicePosition.clone());
 				fader.dragging = true;
+				fader.highlight();
 			}
 		},
 		rightTriggerRelease: function() {
@@ -549,6 +551,8 @@ module.exports = function() {
 			self.transformNode = new BABYLON.TransformNode();
 			self.dragging = false;
 			self.selected = true;
+			self.origin = position.clone();
+			self.range = range;
 			
 			self.box = BABYLON.MeshBuilder.CreateBox('levelFaderMesh', {
 				size: .03
@@ -583,13 +587,13 @@ module.exports = function() {
 			let self = this;
 			self.group.forEach(function(fader) {
 				fader.dragging = false;
-				fader.dragStart = null;
+				//fader.dragStart = null;
+				fader.unhighlight();
 			});
 		}
 		
 		startDrag(pt) {
 			let self = this;
-			console.log('drag start: ', pt);
 			self.dragStart = pt;
 		}
 	}
