@@ -7,7 +7,7 @@ require('howler-plugin-effect-chain');
 module.exports = function() {
 	
 	var canvas, engine, scene, camera, vrHelper;
-	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, scalingRod = {};
+	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, lastPicked, fader, scalingRod = {};
 	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0), zBuffer = .01;
 	var record, records = [], desk, testPoint, showTestPoints = false, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 1000, albumCount = 0, vinylStart;
 	var tuna, chorus;
@@ -43,6 +43,7 @@ module.exports = function() {
 			camera = new BABYLON.ArcRotateCamera('Camera', -Math.PI / 2, Math.PI / 2, 12, BABYLON.Vector3.Zero(), scene);
 			camera.speed = 1;
 			camera.position = new BABYLON.Vector3(0, 1.5, -.5);
+			//camera.position = new BABYLON.Vector3(0, 2.5, -.5);
 			camera.attachControl(canvas, true);
 			
 			vrHelper = scene.createDefaultVRExperience();
@@ -51,9 +52,9 @@ module.exports = function() {
 			});
 			self.setLighting();
 			self.addDesk();
-			self.loadAssets();
+			//self.loadAssets();
 			
-			scene.onPointerDown = function (evt, pickResult) { // click
+			scene.onPointerDown = function (evt, pickResult) { // click for testing on desktop
 				if (pickResult.hit) {
 					picked = pickResult.pickedMesh;
 					if (picked.name === 'albumCover') self.selectRecord(picked);
@@ -65,22 +66,26 @@ module.exports = function() {
 				if (event.keyCode === space && record) {
 					
 					Howler.addEffect(chorus);
-					
-					if (record.paused) {
-						record.audio.play();
-					}
-					else if (record.playing) {
-						record.audio.pause();
-						if (vinylStart) vinylStart.stop();
-					}
-					else {
-						self.startRecord(record);
-					}
+					self.togglePlay();
 				}
 			});
 			
 			scene.clearColor = new BABYLON.Color3(0, 0, 0);
 			return scene;
+		},
+		
+		togglePlay: function() {
+			let self = this;
+			if (record.paused) {
+				record.audio.play();
+			}
+			else if (record.playing) {
+				record.audio.pause();
+				if (vinylStart) vinylStart.stop();
+			}
+			else {
+				self.startRecord(record);
+			}
 		},
 
 		//Pass in the song url and the playback rate to play the song at a specific rate
@@ -122,8 +127,14 @@ module.exports = function() {
 					record.transformNode.position = leftController.devicePosition.add(leftController.getForwardRay(1).direction.scale(.25));
 					if (gfx.createVector(record.transformNode.position, desk.vinylPosition).length() < .02) self.startRecord(record);
 				}
+				
+				if (fader && fader.dragging) {
+					let displacement = gfx.createVector(fader.dragStart, rightController.devicePosition);
+					if (displacement.length() > 1) displacement.normalize();
+					fader.box.position.z = gfx.createVector(fader.dragStart, rightController.devicePosition).z;
+				}
 			}
-			if (record && record.spinning)record.transformNode.rotate(BABYLON.Axis.Y, .005, BABYLON.Space.WORLD);
+			if (record && record.spinning) record.transformNode.rotate(BABYLON.Axis.Y, .005, BABYLON.Space.WORLD);
 			if (record && record.playing) {
 				
 				if (timeCursor && record.progress < 1) {
@@ -153,7 +164,7 @@ module.exports = function() {
 		showSong: function(record) {
 			records.forEach(function(thisRecord) {
 				thisRecord.dispose();
-				thisRecord.waveform.visibility = 0;
+				if (thisRecord.waveform) thisRecord.waveform.visibility = 0;
 			});
 			
 			if (timeCursor) timeCursor.dispose();
@@ -177,22 +188,7 @@ module.exports = function() {
 				desk.scaling = new BABYLON.Vector3(.05, .05, .05);
 				desk.vinylPosition = new BABYLON.Vector3(-.42, 1.11, .005);
 				
-				let box = BABYLON.MeshBuilder.CreateBox('testPoint', {
-					size: .01
-				}, scene);
-				box.position = desk.vinylPosition;
-				box.material = new BABYLON.StandardMaterial('testPoint', scene);
-				box.material.emissiveColor = new BABYLON.Color3(0, 1, 0);
-				testPoint = BABYLON.MeshBuilder.CreateBox('testPoint', {
-					size: .1
-				}, scene);
-				testPoint.material = new BABYLON.StandardMaterial('testPoint', scene);
-				testPoint.material.emissiveColor = new BABYLON.Color3(0, 1, 0);
-				testPoint.isPickable = false;
-				if (!showTestPoints) {
-					testPoint.material.alpha = 0;
-					box.material.alpha = 0;
-				}
+				var test = new LevelFader(new BABYLON.Vector3(.185, 1.08, -.01), .07);
 			});
 		},
 		
@@ -208,8 +204,12 @@ module.exports = function() {
 			vrHelper._teleportBackwardsVector = new BABYLON.Vector3(0, -.1, -.1);
 			//console.log('vrHelper: ', vrHelper);
 			
-			vrHelper.onNewMeshPicked.add(pickingInfo => { // where controller is resting/pointing, fired upon new target
+			vrHelper.onNewMeshPicked.add(function(pickingInfo) { // where controller is resting/pointing, fired upon new target
 				picked = pickingInfo.pickedMesh;
+				
+				if (lastPicked && typeof lastPicked.getParent !== 'undefined' && lastPicked.getParent() instanceof LevelFader) lastPicked.getParent().unhighlight();
+				if (typeof picked.getParent !== 'undefined' && picked.getParent() instanceof LevelFader) picked.getParent().highlight();
+				lastPicked = picked;
 			});
 			
 			vrHelper.onControllerMeshLoadedObservable.add(function(webVRController) {
@@ -314,8 +314,17 @@ module.exports = function() {
 		rightTrigger: function(webVRController, stateObject) {
 			let self = this;
 			if (picked.name === 'albumCover') self.selectRecord(picked);
+			
+			if (typeof picked.getParent !== 'undefined' && picked.getParent() instanceof LevelFader) {
+				console.log('right trigger');
+				fader = picked.getParent();
+				if (!fader.dragging) fader.startDrag(rightController.devicePosition.clone());
+				fader.dragging = true;
+			}
 		},
-		rightTriggerRelease: function() {},
+		rightTriggerRelease: function() {
+			if (fader) fader.endDrag();
+		},
 		leftSecondaryTrigger: function(webVRController) {
 			this.activateTeleportation();
 		},
@@ -527,6 +536,61 @@ module.exports = function() {
 			this.albumCoverMesh.position = gfx.movePoint(startingPoint, new BABYLON.Vector3(-1, 0, 0).scale(.7 * albumCount));
 			this.albumCoverMesh.material = new BABYLON.StandardMaterial('albumCoverMat', scene);
 			this.albumCoverMesh.material.emissiveTexture = new BABYLON.Texture(this.albumCover, scene);
+		}
+	}
+	
+	class LevelFader {
+	
+		constructor(position, range) {
+			
+			let self = this;
+			self.group = [];
+			self.group.push(this);
+			self.transformNode = new BABYLON.TransformNode();
+			self.dragging = false;
+			self.selected = true;
+			
+			self.box = BABYLON.MeshBuilder.CreateBox('levelFaderMesh', {
+				size: .03
+			}, scene);
+			self.box.position = position;
+			self.box.material = new BABYLON.StandardMaterial('levelFaderMaterial', scene);
+			self.box.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
+			self.box.parent = this.transformNode;
+			self.box.isPickable = true;
+			
+			let maxRange = gfx.movePoint(self.box.position, new BABYLON.Vector3(0, 0, range));
+			let minRange = gfx.movePoint(self.box.position, new BABYLON.Vector3(0, 0, -range));
+			
+			self.box.getParent = function() {
+				return self;
+			}
+		}
+		
+		highlight() {
+			let self = this;
+			self.selected = true;
+			self.box.material.emissiveColor = new BABYLON.Color3(.6, .8, .3);
+		}
+		
+		unhighlight() {
+			let self = this;
+			self.selected = false;
+			self.box.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
+		}
+		
+		endDrag() {
+			let self = this;
+			self.group.forEach(function(fader) {
+				fader.dragging = false;
+				fader.dragStart = null;
+			});
+		}
+		
+		startDrag(pt) {
+			let self = this;
+			console.log('drag start: ', pt);
+			self.dragStart = pt;
 		}
 	}
 	
