@@ -90,13 +90,10 @@ module.exports = function () {
 				}
 				
 				if (fader && fader.dragging) {
-					let displacement = gfx.createVector(fader.dragStart, new BABYLON.Vector3(fader.dragStart.x, fader.dragStart.y, rightController.devicePosition.z));
-					//let outOfRange = displacement.length() > fader.range;
-					let outOfRange = gfx.createVector(fader.origin, fader.box.position).length() < fader.range;
+					let displacement = gfx.createVector(fader.dragStart, rightController.devicePosition)
+					let outOfRange = displacement.length() > fader.range;
 					if (outOfRange) displacement = displacement.normalize().scale(fader.range);
-					fader.box.position.z += displacement.z;
-					if (showVector) showVector.dispose();
-					showVector = gfx.createLine(fader.origin, displacement, new BABYLON.Color3(1, 0, 0));
+					fader.box.position.z = displacement.z;
 				}
 			}
 			if (record && record.spinning) record.transformNode.rotate(BABYLON.Axis.Y, .005, BABYLON.Space.WORLD);
@@ -654,9 +651,6 @@ module.exports = function () {
 			self.box.parent = this.transformNode;
 			self.box.isPickable = true;
 			
-			let maxRange = gfx.movePoint(self.box.position, new BABYLON.Vector3(0, 0, range));
-			let minRange = gfx.movePoint(self.box.position, new BABYLON.Vector3(0, 0, -range));
-			
 			self.box.getParent = function() {
 				return self;
 			}
@@ -685,15 +679,6 @@ module.exports = function () {
 		
 		startDrag(pt) {
 			let self = this;
-			
-			let box = BABYLON.MeshBuilder.CreateBox('levelFaderMesh', {
-				size: .01
-			}, scene);
-			box.position = pt;
-			box.material = new BABYLON.StandardMaterial('material', scene);
-			box.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
-			
-			
 			self.dragStart = pt;
 		}
 	}
