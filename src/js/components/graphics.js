@@ -104,6 +104,8 @@
 				let vector2 = new THREE.Vector3(endpoint2.x - vertex.x, endpoint2.y - vertex.y, endpoint2.z - vertex.z);
 				return vector1.angleTo(vector2);
 			}
+
+			
 		}
 	})();
 	
