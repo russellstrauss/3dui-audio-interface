@@ -89,14 +89,9 @@ module.exports = function () {
 					if (gfx.createVector(record.transformNode.position, desk.vinylPosition).length() < .02) self.startRecord(record);
 				}
 				
-				if (fader && fader.dragging) {
-					let displacement = gfx.createVector(fader.dragStart, rightController.devicePosition)
-					let outOfRange = displacement.length() > fader.range;
-					if (outOfRange) displacement = displacement.normalize().scale(fader.range);
-					fader.box.position.z = displacement.z;
-				}
+				if (fader && fader.dragging) fader.update();
 			}
-			if (record && record.spinning) record.transformNode.rotate(BABYLON.Axis.Y, .005, BABYLON.Space.WORLD);
+			if (record && record.spinning) record.transformNode.rotate(BABYLON.Axis.Y, .005 * record.audio.rate(), BABYLON.Space.WORLD);
 			if (record && record.playing) {
 				if (timeCursor && record.progress < 1) {
 					timeCursor.position = gfx.createVector(record.timeCursorOrigin, record.timeCursorFinal).scale(record.progress);
@@ -113,7 +108,7 @@ module.exports = function () {
 
 					if (changeInPlayback != 0) {
 						intersectedRecord.playbackRate += changeInPlayback;
-						console.log(intersectedRecord.playbackRate);
+						//console.log(intersectedRecord.playbackRate);
 						if (intersectedRecord.playing) {
 							//changePlayback Rate of the music based on what is in the record
 						}
@@ -201,6 +196,8 @@ module.exports = function () {
 			if (vinylStart) vinylStart.play();
 			record.spinning = true;
 			
+			Howler.addEffect(chorus);
+			
 			setTimeout(function() {
 				record.audio.soundID = record.audio.play();
 				record.audio.rate(.8, record.audio.soundID);
@@ -234,7 +231,7 @@ module.exports = function () {
 				desk.scaling = new BABYLON.Vector3(.05, .05, .05);
 				desk.vinylPosition = new BABYLON.Vector3(-.42, 1.11, .005);
 				
-				var test = new LevelFader(new BABYLON.Vector3(.185, 1.08, -.01), .07);
+				var test = new LevelFader(new BABYLON.Vector3(.185, 1.08, -.09), .07);
 			});
 		},
 		
@@ -488,7 +485,6 @@ module.exports = function () {
 					StartAudioContext(Howler.ctx);
 				};
 			});
-
 			assetsManager.load();
 		}
 	};
@@ -514,11 +510,11 @@ module.exports = function () {
 				self.addAlbumCover();
 				StartAudioContext(self.babylonAudio._inputAudioNode.context);
 			},
-				{ // sound options
-					loop: false,
-					autoplay: false,
-					useCustomAttenuation: true
-				});
+			{ // sound options
+				loop: false,
+				autoplay: false,
+				useCustomAttenuation: true
+			});
 			this.audio = new Howl({
 				src: [self.audioPath],
 				preload: true,
@@ -540,6 +536,11 @@ module.exports = function () {
 					self.playing = false;
 					self.paused = false;
 					self.spinning = false;
+				},
+				onend: function () {
+					self.playing = false;
+					self.paused = false;
+					self.spinning = false; 
 				}
 			});
 			
@@ -651,6 +652,7 @@ module.exports = function () {
 			self.box.parent = this.transformNode;
 			self.box.isPickable = true;
 			
+			
 			self.box.getParent = function() {
 				return self;
 			}
@@ -680,6 +682,22 @@ module.exports = function () {
 		startDrag(pt) {
 			let self = this;
 			self.dragStart = pt;
+		}
+		
+		update() {
+			let displacement = gfx.createVector(fader.dragStart, rightController.devicePosition)
+			let outOfRange = displacement.length() > fader.range;
+			if (outOfRange) displacement = displacement.normalize().scale(fader.range);
+			fader.box.position.z = displacement.z;
+			
+			let stateDirection = gfx.createVector(fader.origin, fader.box.position);
+			
+			if (showVector) showVector.dispose();
+			showVector = gfx.createLine(fader.origin, stateDirection);
+			fader.state = stateDirection.length() / (fader.range * 2);
+			
+			//record.audio.rate(fader.state* 2, record.audio.soundID);
+			chorus.feedback = fader.state * 2;
 		}
 	}
 	
