@@ -7,9 +7,9 @@ require('howler-plugin-effect-chain');
 module.exports = function () {
 
 	var canvas, engine, scene, camera, vrHelper;
-	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, scalingRod = {};
+	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, lastPicked, fader, scalingRod = {};
 	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0), zBuffer = .01;
-	var record, records = [], desk, testPoint, showTestPoints = false, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 1000, albumCount = 0, vinylStart;
+	var record, records = [], desk, testPoint, showTestPoints = false, showVector, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 1000, albumCount = 0, vinylStart, maxRecordCount = 1;
 	var tuna, chorus;
 	var leftSphereToolTip;
 	var rightSphereToolTip;
@@ -22,7 +22,6 @@ module.exports = function () {
 
 		init: function () {
 			let self = this;
-
 			canvas = document.getElementById('renderCanvas');
 			engine = new BABYLON.Engine(canvas, true, {
 				preserveDrawingBuffer: true,
@@ -49,6 +48,7 @@ module.exports = function () {
 			camera = new BABYLON.ArcRotateCamera('Camera', -Math.PI / 2, Math.PI / 2, 12, BABYLON.Vector3.Zero(), scene);
 			camera.speed = 1;
 			camera.position = new BABYLON.Vector3(0, 1.5, -.5);
+			//camera.position = new BABYLON.Vector3(0, 2.5, -.5);
 			camera.attachControl(canvas, true);
 
 			vrHelper = scene.createDefaultVRExperience();
@@ -58,8 +58,8 @@ module.exports = function () {
 			self.setLighting();
 			self.addDesk();
 			self.loadAssets();
-
-			scene.onPointerDown = function (evt, pickResult) { // click
+			
+			scene.onPointerDown = function (evt, pickResult) { // click for testing on desktop
 				if (pickResult.hit) {
 					picked = pickResult.pickedMesh;
 					if (picked.name === 'albumCover') self.selectRecord(picked);
@@ -71,22 +71,58 @@ module.exports = function () {
 				if (event.keyCode === space && record) {
 
 					Howler.addEffect(chorus);
-
-					if (record.paused) {
-						record.audio.play();
-					}
-					else if (record.playing) {
-						record.audio.pause();
-						if (vinylStart) vinylStart.stop();
-					}
-					else {
-						self.startRecord(record);
-					}
+					self.togglePlay();
 				}
 			});
 
 			scene.clearColor = new BABYLON.Color3(0, 0, 0);
 			return scene;
+		},
+		
+		everyFrame: function() {
+			
+			let self = this;
+			if (rightController && leftController) {
+				
+				if (record && desk.vinylPosition && record.inHand) {
+					record.transformNode.position = leftController.devicePosition.add(leftController.getForwardRay(1).direction.scale(.25));
+					if (gfx.createVector(record.transformNode.position, desk.vinylPosition).length() < .02) self.startRecord(record);
+				}
+				
+				if (fader && fader.dragging) {
+					let displacement = gfx.createVector(fader.dragStart, new BABYLON.Vector3(fader.dragStart.x, fader.dragStart.y, rightController.devicePosition.z));
+					//let outOfRange = displacement.length() > fader.range;
+					let outOfRange = gfx.createVector(fader.origin, fader.box.position).length() < fader.range;
+					if (outOfRange) displacement = displacement.normalize().scale(fader.range);
+					fader.box.position.z += displacement.z;
+					//if (showVector) showVector.dispose();
+					showVector = gfx.createLine(fader.origin, displacement, new BABYLON.Color3(1, 0, 0));
+				}
+			}
+			if (record && record.spinning) record.transformNode.rotate(BABYLON.Axis.Y, .005, BABYLON.Space.WORLD);
+			if (record && record.playing) {
+				
+				if (timeCursor && record.progress < 1) {
+					timeCursor.position = gfx.createVector(record.timeCursorOrigin, record.timeCursorFinal).scale(record.progress);
+				}
+				if (record.audio) {
+					record.progress = record.audio.seek() / record.audio.duration();
+				}
+			}
+		},
+		
+		togglePlay: function() {
+			let self = this;
+			if (record.paused) {
+				record.audio.play();
+			}
+			else if (record.playing) {
+				record.audio.pause();
+				if (vinylStart) vinylStart.stop();
+			}
+			else {
+				self.startRecord(record);
+			}
 		},
 
 		//Pass in the song url and the playback rate to play the song at a specific rate
@@ -181,7 +217,7 @@ module.exports = function () {
 			}
 		},
 
-		startRecord: function (record) {
+		startRecord: function(record) {
 			let self = this;
 			record.audio.stop();
 			record.inHand = false;
@@ -190,16 +226,17 @@ module.exports = function () {
 
 			if (vinylStart) vinylStart.play();
 			record.spinning = true;
-
-			setTimeout(function () {
-				record.audio.play();
+			
+			setTimeout(function() {
+				record.audio.soundID = record.audio.play();
+				record.audio.rate(.8, record.audio.soundID);
 			}, 500);
 		},
 
 		showSong: function (record) {
 			records.forEach(function (thisRecord) {
 				thisRecord.dispose();
-				thisRecord.waveform.visibility = 0;
+				if (thisRecord.waveform) thisRecord.waveform.visibility = 0;
 			});
 
 			if (timeCursor) timeCursor.dispose();
@@ -222,26 +259,30 @@ module.exports = function () {
 				desk.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
 				desk.scaling = new BABYLON.Vector3(.05, .05, .05);
 				desk.vinylPosition = new BABYLON.Vector3(-.42, 1.11, .005);
-
-				let box = BABYLON.MeshBuilder.CreateBox('testPoint', {
-					size: .01
-				}, scene);
-				box.position = desk.vinylPosition;
-				box.material = new BABYLON.StandardMaterial('testPoint', scene);
-				box.material.emissiveColor = new BABYLON.Color3(0, 1, 0);
-				testPoint = BABYLON.MeshBuilder.CreateBox('testPoint', {
-					size: .1
-				}, scene);
-				testPoint.material = new BABYLON.StandardMaterial('testPoint', scene);
-				testPoint.material.emissiveColor = new BABYLON.Color3(0, 1, 0);
-				testPoint.isPickable = false;
-				if (!showTestPoints) {
-					testPoint.material.alpha = 0;
-					box.material.alpha = 0;
-				}
+				
+				var test = new LevelFader(new BABYLON.Vector3(.185, 1.08, -.01), .07);
 			});
 		},
+		
+		createToolTips: function(webVRController) {
+			//console.log('GOT HERE');
+			var pos = webVRController.devicePosition;
 
+			var cSize = 0.08;
+			var sSegments = 32;
+			var sphere = BABYLON.MeshBuilder.CreateSphere('sphere', { diameter: cSize, segments: sSegments }, scene);
+			sphere.position = pos;
+			var mat = new BABYLON.StandardMaterial('toolTipSphereMat', scene);
+			mat.diffuseColor = new BABYLON.Color3(1, 0, 1);
+			mat.wireframe = false;
+			mat.alpha = 0.1;
+			sphere.material = mat;
+			sphere.isPickable = false;
+
+
+			leftSphereToolTip = sphere;
+		},
+		
 		addButtonEvents: function () {
 
 			let self = this;
@@ -253,32 +294,14 @@ module.exports = function () {
 			vrHelper.teleportationTarget = BABYLON.Mesh.CreateSphere('ground', 4, 0.05, scene);
 			vrHelper._teleportBackwardsVector = new BABYLON.Vector3(0, -.1, -.1);
 			//console.log('vrHelper: ', vrHelper);
-
-			vrHelper.onNewMeshPicked.add(pickingInfo => { // where controller is resting/pointing, fired upon new target
+			
+			vrHelper.onNewMeshPicked.add(function(pickingInfo) { // where controller is resting/pointing, fired upon new target
 				picked = pickingInfo.pickedMesh;
+				
+				if (lastPicked && typeof lastPicked.getParent !== 'undefined' && lastPicked.getParent() instanceof LevelFader && !lastPicked.getParent().dragging) lastPicked.getParent().unhighlight();
+				if (typeof picked.getParent !== 'undefined' && picked.getParent() instanceof LevelFader) picked.getParent().highlight();
+				lastPicked = picked;
 			});
-
-			var createToolTips = function (webVRController) {
-				if (webVRController.hand == "left") {
-					//console.log("GOT HERE");
-					var pos = webVRController.devicePosition;
-
-					var cSize = 0.08;
-					var sSegments = 32;
-					var sphere = BABYLON.MeshBuilder.CreateSphere("sphere", { diameter: cSize, segments: sSegments }, scene);
-					sphere.position = pos;
-					var mat = new BABYLON.StandardMaterial("toolTipSphereMat", scene);
-					mat.diffuseColor = new BABYLON.Color3(1, 0, 1);
-					mat.wireframe = false;
-					mat.alpha = 0.1;
-					sphere.material = mat;
-					sphere.isPickable = false;
-
-
-					leftSphereToolTip = sphere;
-				}
-
-			};
 
 			vrHelper.onControllerMeshLoadedObservable.add(function (webVRController) {
 				if (webVRController.hand === 'left') {
@@ -286,13 +309,12 @@ module.exports = function () {
 					vrHelper._leftController._gazeTracker._isEnabled = false;
 					leftController = webVRController;
 					leftControllerPosition = webVRController.devicePosition;
+					self.createToolTips(leftController);
 				}
 				if (webVRController.hand === 'right') {
 					vrHelper._rightController._laserPointer._isEnabled = false;
 					rightController = webVRController;
 				}
-
-				createToolTips(webVRController);
 
 				if (leftController && webVRController === leftController) {
 					leftController.onSecondaryButtonStateChangedObservable.add(function (stateObject) {
@@ -406,9 +428,18 @@ module.exports = function () {
 		rightTrigger: function (webVRController, stateObject) {
 			let self = this;
 			if (picked.name === 'albumCover') self.selectRecord(picked);
+			
+			if (typeof picked.getParent !== 'undefined' && picked.getParent() instanceof LevelFader) {
+				fader = picked.getParent();
+				if (!fader.dragging) fader.startDrag(rightController.devicePosition.clone());
+				fader.dragging = true;
+				fader.highlight();
+			}
 		},
-		rightTriggerRelease: function () { },
-		leftSecondaryTrigger: function (webVRController) {
+		rightTriggerRelease: function() {
+			if (fader) fader.endDrag();
+		},
+		leftSecondaryTrigger: function(webVRController) {
 			this.activateTeleportation();
 		},
 		leftSecondaryTriggerRelease: function () {
@@ -473,12 +504,12 @@ module.exports = function () {
 				delay: 0.45,
 				bypass: 0
 			});
-
-			assetsManager.addBinaryFileTask('i-feel-for-you', './src/audio/i-feel-for-you.mp3').albumCover = './src/img/chaka-khan.jpg';
+			
 			assetsManager.addBinaryFileTask('greenfields', './src/audio/greenfields.mp3').albumCover = './src/img/greenfields.jpg';
-			assetsManager.addBinaryFileTask('quimey-neuquen', './src/audio/quimey-neuquen.mp3').albumCover = './src/img/quimey-neuquen.jpg';
-			assetsManager._tasks.forEach(function (task) {
-				task.onSuccess = function (thisTask) {
+			if (maxRecordCount > 1) assetsManager.addBinaryFileTask('i-feel-for-you', './src/audio/i-feel-for-you.mp3').albumCover = './src/img/chaka-khan.jpg';
+			if (maxRecordCount > 2) assetsManager.addBinaryFileTask('quimey-neuquen', './src/audio/quimey-neuquen.mp3').albumCover = './src/img/quimey-neuquen.jpg';
+			assetsManager._tasks.forEach(function(task) {
+				task.onSuccess = function(thisTask) {
 					records.push(new Record(thisTask.url, thisTask.albumCover));
 					StartAudioContext(Howler.ctx);
 				};
@@ -537,6 +568,7 @@ module.exports = function () {
 					self.spinning = false;
 				}
 			});
+			
 			return this;
 		}
 
@@ -622,6 +654,72 @@ module.exports = function () {
 			this.albumCoverMesh.material.emissiveTexture = new BABYLON.Texture(this.albumCover, scene);
 		}
 	}
-
+	
+	class LevelFader {
+	
+		constructor(position, range) {
+			
+			let self = this;
+			self.group = [];
+			self.group.push(this);
+			self.transformNode = new BABYLON.TransformNode();
+			self.dragging = false;
+			self.selected = true;
+			self.origin = position.clone();
+			self.range = range;
+			
+			self.box = BABYLON.MeshBuilder.CreateBox('levelFaderMesh', {
+				size: .03
+			}, scene);
+			self.box.position = position;
+			self.box.material = new BABYLON.StandardMaterial('levelFaderMaterial', scene);
+			self.box.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
+			self.box.parent = this.transformNode;
+			self.box.isPickable = true;
+			
+			let maxRange = gfx.movePoint(self.box.position, new BABYLON.Vector3(0, 0, range));
+			let minRange = gfx.movePoint(self.box.position, new BABYLON.Vector3(0, 0, -range));
+			
+			self.box.getParent = function() {
+				return self;
+			}
+		}
+		
+		highlight() {
+			let self = this;
+			self.selected = true;
+			self.box.material.emissiveColor = new BABYLON.Color3(.6, .8, .3);
+		}
+		
+		unhighlight() {
+			let self = this;
+			self.selected = false;
+			self.box.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
+		}
+		
+		endDrag() {
+			let self = this;
+			self.group.forEach(function(fader) {
+				fader.dragging = false;
+				//fader.dragStart = null;
+				fader.unhighlight();
+			});
+		}
+		
+		startDrag(pt) {
+			let self = this;
+			
+			let box = BABYLON.MeshBuilder.CreateBox('levelFaderMesh', {
+				size: .01
+			}, scene);
+			box.position = pt;
+			box.material = new BABYLON.StandardMaterial('material', scene);
+			box.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
+			
+			
+			self.dragStart = pt;
+		}
+	}
+	
 	return methods;
 }
