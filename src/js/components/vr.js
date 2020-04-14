@@ -1,6 +1,8 @@
 var StartAudioContext = require('startaudiocontext');
-var pizzicato = require('pizzicato');
+var Pizzicato = require('pizzicato');
 var howler = require('howler');
+var Tuna = require('tunajs');
+require('howler-plugin-effect-chain');
 
 module.exports = function() {
 	
@@ -8,6 +10,7 @@ module.exports = function() {
 	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, scalingRod = {};
 	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0), zBuffer = .01;
 	var record, records = [], desk, testPoint, showTestPoints = false, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 1000, albumCount = 0, vinylStart;
+	var tuna, chorus;
 	
 	let methods = {
 		
@@ -39,7 +42,7 @@ module.exports = function() {
 			scene.ambientColor = new BABYLON.Color3(1, 0, 0);
 			camera = new BABYLON.ArcRotateCamera('Camera', -Math.PI / 2, Math.PI / 2, 12, BABYLON.Vector3.Zero(), scene);
 			camera.speed = 1;
-			camera.position = new BABYLON.Vector3(0, 1.2, -1.1);
+			camera.position = new BABYLON.Vector3(0, 1.5, -.5);
 			camera.attachControl(canvas, true);
 			
 			vrHelper = scene.createDefaultVRExperience();
@@ -60,10 +63,13 @@ module.exports = function() {
 			document.addEventListener('keyup', function(event) {
 				let space = 32;
 				if (event.keyCode === space && record) {
+					
+					Howler.addEffect(chorus);
+					
 					if (record.paused) {
 						record.audio.play();
 					}
-					else if (record.audio.playing()) {
+					else if (record.playing) {
 						record.audio.pause();
 						if (vinylStart) vinylStart.stop();
 					}
@@ -104,7 +110,7 @@ module.exports = function() {
 			// Length of the music should be music._length, so in theory this should just  
 			// return currentProgress / totalLength;
 			
-			return (music.audio._inputAudioNode.context.currentTime - music.audio._startTime + music.audio._startOffset) / music.audio._audioBuffer.duration; //edit as needed
+			return;
 		},
 		
 		everyFrame: function() {
@@ -118,7 +124,7 @@ module.exports = function() {
 				}
 			}
 			if (record && record.spinning)record.transformNode.rotate(BABYLON.Axis.Y, .005, BABYLON.Space.WORLD);
-			if (record && record.audio.playing()) {
+			if (record && record.playing) {
 				
 				if (timeCursor && record.progress < 1) {
 					timeCursor.position = gfx.createVector(record.timeCursorOrigin, record.timeCursorFinal).scale(record.progress);
@@ -348,30 +354,44 @@ module.exports = function() {
 		},
 		
 		setLighting: function() {
-			
 			let hemisphericLight = new BABYLON.HemisphericLight('HemiLight', new BABYLON.Vector3(0, 10, 0), scene);
 			hemisphericLight.intensity = .1;
 			let ground = BABYLON.MeshBuilder.CreateGround('ground', { height: 20, width: 20, subdivisions: 4, isPickable: false }, scene);
 		},
 		
+		stopAllAudio: function() {
+			Howler.stop();
+		},
+		
 		loadAssets: function() {
 			let self = this;
+			
 			let assetsManager = new BABYLON.AssetsManager(scene);
 			vinylStart = new Howl({
 				src: ['./src/audio/vinyl-start.wav'],
 				preload: true,
-				autoplay: false
+				autoplay: false,
+				onload: function() {}
 			});
+			
+			tuna = new Tuna(Howler.ctx);
+			chorus = new tuna.Chorus({
+				rate: 1.5,
+				feedback: 0.72,
+				delay: 0.45,
+				bypass: 0
+			});
+			
 			assetsManager.addBinaryFileTask('i-feel-for-you', './src/audio/i-feel-for-you.mp3').albumCover = './src/img/chaka-khan.jpg';
 			assetsManager.addBinaryFileTask('greenfields', './src/audio/greenfields.mp3').albumCover = './src/img/greenfields.jpg';
 			assetsManager.addBinaryFileTask('quimey-neuquen', './src/audio/quimey-neuquen.mp3').albumCover = './src/img/quimey-neuquen.jpg';
-			
 			assetsManager._tasks.forEach(function(task) {
 				task.onSuccess = function(thisTask) {
 					records.push(new Record(thisTask.url, thisTask.albumCover));
 					StartAudioContext(Howler.ctx);
 				};
 			});
+			
 			assetsManager.load();
 		}
 	};
@@ -387,6 +407,7 @@ module.exports = function() {
 			this.albumCover = albumCover;
 			this.paused = false;
 			this.spinning = false;
+			this.playing = false;
 			
 			this.babylonAudio = new BABYLON.Sound('Music', this.audioPath, scene, function() { //on audio buffer loaded
 				self.audioBuffer = self.babylonAudio._audioBuffer;
@@ -408,14 +429,17 @@ module.exports = function() {
 					
 				},
 				onpause: function() {
+					self.playing = false;
 					self.paused = true;
 					self.spinning = false;
 				},
 				onplay: function() {
+					self.playing = true;
 					self.paused = false;
 					self.spinning = true;
 				},
 				onstop: function() {
+					self.playing = false;
 					self.paused = false;
 					self.spinning = false;
 				}
@@ -449,7 +473,6 @@ module.exports = function() {
 		}
 		
 		createAudioSamples() {
-			
 			let self = this;
 			let audioStreamSamples = self.getAudioSamples(this.audioBuffer);
 			let sampleCount = waveformFidelity;

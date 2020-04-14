@@ -1,5 +1,5 @@
 {
-    "name": "3dui-audi-interface",
+    "name": "3dui-audio-interface",
     "version": "1.0.0",
     "description": "3D UI Using Babylon",
     "main": "index.ts",
@@ -9,8 +9,9 @@
     "dependencies": {
         "gulp-v3": "^3.12.1",
         "howler": "^2.1.3",
-        "pizzicato": "^0.6.4",
-        "startaudiocontext": "^1.2.1"
+        "howler-plugin-effect-chain": "^0.1.2",
+        "startaudiocontext": "^1.2.1",
+        "tunajs": "^1.0.11"
     },
     "devDependencies": {
         "@babel/core": "^7.8.4",
