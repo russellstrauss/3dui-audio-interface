@@ -9,7 +9,7 @@ module.exports = function() {
 	var canvas, engine, scene, camera, vrHelper;
 	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, lastPicked, fader, scalingRod = {};
 	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0), zBuffer = .01;
-	var record, records = [], desk, testPoint, showTestPoints = false, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 1000, albumCount = 0, vinylStart;
+	var record, records = [], desk, testPoint, showTestPoints = false, showVector, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 1000, albumCount = 0, vinylStart, maxRecordCount = 1;
 	var tuna, chorus;
 	
 	let methods = {
@@ -51,7 +51,7 @@ module.exports = function() {
 			});
 			self.setLighting();
 			self.addDesk();
-			//self.loadAssets();
+			self.loadAssets();
 			
 			scene.onPointerDown = function (evt, pickResult) { // click for testing on desktop
 				if (pickResult.hit) {
@@ -84,12 +84,13 @@ module.exports = function() {
 				}
 				
 				if (fader && fader.dragging) {
-					let displacement = gfx.createVector(fader.dragStart, rightController.devicePosition)
-					let outOfRange = displacement.length() > fader.range;
+					let displacement = gfx.createVector(fader.dragStart, new BABYLON.Vector3(fader.dragStart.x, fader.dragStart.y, rightController.devicePosition.z));
+					//let outOfRange = displacement.length() > fader.range;
+					let outOfRange = gfx.createVector(fader.origin, fader.box.position).length() < fader.range;
 					if (outOfRange) displacement = displacement.normalize().scale(fader.range);
-					console.log('displacement.length(): ', displacement.length());
-					console.log('fader.range: ', fader.range);
-					fader.box.position.z = displacement.z;
+					fader.box.position.z += displacement.z;
+					if (showVector) showVector.dispose();
+					showVector = gfx.createLine(fader.origin, displacement, new BABYLON.Color3(1, 0, 0));
 				}
 			}
 			if (record && record.spinning) record.transformNode.rotate(BABYLON.Axis.Y, .005, BABYLON.Space.WORLD);
@@ -159,7 +160,9 @@ module.exports = function() {
 			record.spinning = true;
 			
 			setTimeout(function() {
-				record.audio.play();
+				//record.audio.rate = 2.0;
+				record.audio.soundID = record.audio.play();
+				record.audio.rate(.8, record.audio.soundID);
 			}, 500);
 		},
 		
@@ -393,9 +396,9 @@ module.exports = function() {
 				bypass: 0
 			});
 			
-			assetsManager.addBinaryFileTask('i-feel-for-you', './src/audio/i-feel-for-you.mp3').albumCover = './src/img/chaka-khan.jpg';
 			assetsManager.addBinaryFileTask('greenfields', './src/audio/greenfields.mp3').albumCover = './src/img/greenfields.jpg';
-			assetsManager.addBinaryFileTask('quimey-neuquen', './src/audio/quimey-neuquen.mp3').albumCover = './src/img/quimey-neuquen.jpg';
+			if (maxRecordCount > 1) assetsManager.addBinaryFileTask('i-feel-for-you', './src/audio/i-feel-for-you.mp3').albumCover = './src/img/chaka-khan.jpg';
+			if (maxRecordCount > 2) assetsManager.addBinaryFileTask('quimey-neuquen', './src/audio/quimey-neuquen.mp3').albumCover = './src/img/quimey-neuquen.jpg';
 			assetsManager._tasks.forEach(function(task) {
 				task.onSuccess = function(thisTask) {
 					records.push(new Record(thisTask.url, thisTask.albumCover));
@@ -455,6 +458,7 @@ module.exports = function() {
 					self.spinning = false;
 				}
 			});
+			
 			return this;
 		}
 		
@@ -594,6 +598,15 @@ module.exports = function() {
 		
 		startDrag(pt) {
 			let self = this;
+			
+			let box = BABYLON.MeshBuilder.CreateBox('levelFaderMesh', {
+				size: .01
+			}, scene);
+			box.position = pt;
+			box.material = new BABYLON.StandardMaterial('material', scene);
+			box.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
+			
+			
 			self.dragStart = pt;
 		}
 	}
