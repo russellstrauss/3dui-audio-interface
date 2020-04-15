@@ -9,7 +9,7 @@ module.exports = function () {
 	var canvas, engine, scene, camera, vrHelper;
 	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, lastPicked, selectedMesh, fader, scalingRod = {};
 	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0), zBuffer = .01;
-	var menuItems = [], highlightColor = new BABYLON.Color3(.5, 0, 0), selectedColor = new BABYLON.Color3(1, 0, 0), activeTool, masterVolume, volumeEffector;
+	var menuItems = [], highlightColor = new BABYLON.Color3(.5, 0, 0), selectedColor = new BABYLON.Color3(1, 0, 0), activeTool, masterVolume, balloonOrigin;
 	var record, records = [], desk, testPoint, showTestPoints = false, showVector, showVector2, showVector3, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 1000, albumCount = 0, vinylStart, maxRecordCount = 1;
 	var tuna, chorus;
 	var leftSphereToolTip;
@@ -64,9 +64,9 @@ module.exports = function () {
 			self.addDebugButtons();
 			
 			masterVolume = new MenuItemBlock(new BABYLON.Vector3(.12, 1.07, .15), 'Master Volume', menuItems, scene);
-			
-			volumeEffector = new Effector(.5, 1, scalingRod, function(value) {
-				if (record && typeof value === 'Number') record.audio.rate(value, record.audio.soundID);
+			masterVolume.effector = new Effector(masterVolume, 0, 1, scalingRod, function(value) {
+				
+				if (record && typeof value === 'number') Howler.volume(value);
 			});
 			
 			scene.clearColor = new BABYLON.Color3(0, 0, 0);
@@ -87,8 +87,8 @@ module.exports = function () {
 					if (lastPicked && typeof lastPicked.getParent !== 'undefined' && lastPicked.getParent() instanceof LevelFader && !lastPicked.getParent().dragging) lastPicked.getParent().unhighlight();
 					if (lastPicked && typeof lastPicked.getParent !== 'undefined' && lastPicked.getParent() instanceof MenuItemBlock) lastPicked.getParent().unhighlight();
 				}
-				//self.updateBalloon();
-				volumeEffector.update();
+				self.updateBalloon();
+				self.updateEffectors();
 			}
 			if (record && record.spinning) record.transformNode.rotate(BABYLON.Axis.Y, .005 * record.audio.rate(), BABYLON.Space.WORLD);
 			if (record && record.playing) {
@@ -120,42 +120,53 @@ module.exports = function () {
 			}
 		},
 		
+		updateEffectors: function() {
+			masterVolume.effector.update();
+		},
+		
 		updateBalloon: function() {
-			
-			if (!scalingRod.initialLength) {
-				scalingRod.scalingState = true;
-				scalingRod.initialLength = gfx.createVector(leftController.devicePosition, rightController.devicePosition).length();
+			if (balloonOrigin) {
+				
+				if (!scalingRod.initialLength) {
+					scalingRod.scalingState = true;
+					scalingRod.initialLength = gfx.createVector(leftController.devicePosition, rightController.devicePosition).length();
+				}
+				let minimumOffset = 1.6;
+				let controllerMidpoint = gfx.getMidpoint(leftController.devicePosition, rightController.devicePosition);
+				
+				scalingRod.balloonTotalLength = .5;
+				scalingRod.controllersVector = gfx.createVector(leftController.devicePosition, rightController.devicePosition);
+				scalingRod.balloonTotalVector = gfx.createVector(rightController.devicePosition, gfx.movePoint(rightController.devicePosition, new BABYLON.Vector3(0, scalingRod.balloonTotalLength, 0)));
+				scalingRod.currentLength = scalingRod.controllersVector.length();
+				let balloonLength = scalingRod.balloonTotalLength - scalingRod.currentLength;
+				if (balloonLength < 0) balloonLength = 0;
+				scalingRod.balloonVector = gfx.createVector(balloonOrigin, gfx.movePoint(balloonOrigin, new BABYLON.Vector3(0, 1, 0).scale(balloonLength))).scale(minimumOffset);
+				if (scalingRod.balloonVector.length() > scalingRod.balloonTotalLength) scalingRod.balloonVector = scalingRod.balloonVector.normalize().scale(scalingRod.balloonTotalLength);
+				
+				if (scalingRod.balloonPositionIndicatorMesh) scalingRod.balloonPositionIndicatorMesh.dispose();
+				scalingRod.balloonPositionIndicatorMesh = BABYLON.MeshBuilder.CreateBox('balloon', { size: .01 }, scene);
+				scalingRod.balloonPositionIndicatorMesh.isPickable = false;
+				scalingRod.balloonPositionIndicatorMesh.position = gfx.movePoint(balloonOrigin, scalingRod.balloonVector);
+				if (!scalingRod.balloonPositionIndicatorMesh.material) {
+					scalingRod.balloonPositionIndicatorMesh.material = new BABYLON.StandardMaterial('balloonMaterial', scene);
+					scalingRod.balloonPositionIndicatorMesh.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
+					scalingRod.balloonPositionIndicatorMesh.material.alpha = 0.3;
+				}
+				
+				// show progress indicators
+				if (scalingRod.balloonTotalVectorMesh) scalingRod.balloonTotalVectorMesh.dispose();
+				scalingRod.balloonTotalVectorMesh = gfx.createLine(balloonOrigin, scalingRod.balloonTotalVector, new BABYLON.Color3(1, 1, 1), .5);
+				scalingRod.balloonTotalVectorMesh.isPickable = false;
+				if (scalingRod.balloonVectorMesh) scalingRod.balloonVectorMesh.dispose();
+				scalingRod.balloonVectorMesh = gfx.createLine(balloonOrigin, scalingRod.balloonVector, new BABYLON.Color3(0, 1, 0), .5);
+				scalingRod.balloonVectorMesh.isPickable = false;
+				scalingRod.state = scalingRod.balloonVector.length() / scalingRod.balloonTotalLength; // final 0.0.1 value
 			}
-			let minimumOffset = 1.6;
-			let controllerMidpoint = gfx.getMidpoint(leftController.devicePosition, rightController.devicePosition);
-			let balloonOrigin = rightController.devicePosition;
-			scalingRod.balloonTotalLength = .5;
-			scalingRod.controllersVector = gfx.createVector(leftController.devicePosition, rightController.devicePosition);
-			scalingRod.balloonTotalVector = gfx.createVector(rightController.devicePosition, gfx.movePoint(rightController.devicePosition, new BABYLON.Vector3(0, scalingRod.balloonTotalLength, 0)));
-			scalingRod.currentLength = scalingRod.controllersVector.length();
-			let balloonLength = scalingRod.balloonTotalLength - scalingRod.currentLength;
-			if (balloonLength < 0) balloonLength = 0;
-			scalingRod.balloonVector = gfx.createVector(balloonOrigin, gfx.movePoint(balloonOrigin, new BABYLON.Vector3(0, 1, 0).scale(balloonLength))).scale(minimumOffset);
-			if (scalingRod.balloonVector.length() > scalingRod.balloonTotalLength) scalingRod.balloonVector = scalingRod.balloonVector.normalize().scale(scalingRod.balloonTotalLength);
-			
-			if (scalingRod.balloonPositionIndicator) scalingRod.balloonPositionIndicator.dispose();
-			scalingRod.balloonPositionIndicator = BABYLON.MeshBuilder.CreateBox('balloon', { size: .01 }, scene);
-			scalingRod.balloonPositionIndicator.isPickable = false;
-			scalingRod.balloonPositionIndicator.position = gfx.movePoint(balloonOrigin, scalingRod.balloonVector);
-			if (!scalingRod.balloonPositionIndicator.material) {
-				scalingRod.balloonPositionIndicator.material = new BABYLON.StandardMaterial('balloonMaterial', scene);
-				scalingRod.balloonPositionIndicator.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
-				scalingRod.balloonPositionIndicator.material.alpha = 0.3;
+			else {
+				if (scalingRod.balloonPositionIndicatorMesh) scalingRod.balloonPositionIndicatorMesh.dispose();
+				if (scalingRod.balloonTotalVectorMesh) scalingRod.balloonTotalVectorMesh.dispose();
+				if (scalingRod.balloonVectorMesh) scalingRod.balloonVectorMesh.dispose();
 			}
-			
-			// show progress indicators
-			if (scalingRod.balloonTotalVectorMesh) scalingRod.balloonTotalVectorMesh.dispose();
-			scalingRod.balloonTotalVectorMesh = gfx.createLine(balloonOrigin, scalingRod.balloonTotalVector, new BABYLON.Color3(1, 1, 1), .5);
-			scalingRod.balloonTotalVectorMesh.isPickable = false;
-			if (scalingRod.balloonVectorVectorMesh) scalingRod.balloonVectorVectorMesh.dispose();
-			scalingRod.balloonVectorVectorMesh = gfx.createLine(balloonOrigin, scalingRod.balloonVector, new BABYLON.Color3(0, 1, 0), .5);
-			scalingRod.balloonVectorVectorMesh.isPickable = false;
-			scalingRod.state = scalingRod.balloonVector.length() / scalingRod.balloonTotalLength; // final 0.0.1 value
 		},
 		
 		togglePlay: function() {
@@ -451,8 +462,6 @@ module.exports = function () {
 			let self = this;
 			if (picked.name === 'albumCover') self.selectRecord(picked);
 			
-			//if (picked) console.log(picked);
-			
 			if (typeof picked.getParent !== 'undefined' && picked.getParent() instanceof LevelFader) {
 				fader = picked.getParent();
 				if (!fader.dragging) fader.startDrag(rightController.devicePosition.clone());
@@ -719,17 +728,18 @@ module.exports = function () {
 	
 	class Effector {
 		
-		constructor(min, max, interpolator, modifierFunction) {
+		constructor(menuItem, min, max, interpolator, modifierFunction) {
 			let self = this;
 			this.modifier = modifierFunction;
 			this.interpolator = interpolator;
 			this.min = min;
 			this.max = max;
+			this.menuItem = menuItem;
 		}
 		
 		update() {
 			
-			if (this.interpolator) {
+			if (this.menuItem.active) {
 				let state = this.min + (this.max - this.min) * this.interpolator.state;
 				this.modifier(state);
 			}
@@ -783,12 +793,14 @@ module.exports = function () {
 			this.selecting = true;
 			this.active = true;
 			activeTool = this;
+			balloonOrigin = this.position;
 			this.hideLabel();
 		}
 		
 		setInactive() {
 			this.box.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
 			this.active = false;
+			balloonOrigin = null;
 		}
 		
 		highlight() {
