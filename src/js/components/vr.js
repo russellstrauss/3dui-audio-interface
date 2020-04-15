@@ -9,7 +9,7 @@ module.exports = function () {
 	var canvas, engine, scene, camera, vrHelper;
 	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, lastPicked, selectedMesh, fader, scalingRod = {};
 	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0), zBuffer = .01;
-	var menuItems = [], selectedColor = new BABYLON.Color3(.6, .8, .3), activeTool, masterVolume;
+	var menuItems = [], selectedColor = new BABYLON.Color3(.6, .8, .3), activeTool, masterVolume, volumeEffector;
 	var record, records = [], desk, testPoint, showTestPoints = false, showVector, showVector2, showVector3, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 1000, albumCount = 0, vinylStart, maxRecordCount = 1;
 	var tuna, chorus;
 	var leftSphereToolTip;
@@ -65,6 +65,10 @@ module.exports = function () {
 			
 			masterVolume = new MenuItemBlock(new BABYLON.Vector3(.12, 1.07, .15), 'Master Volume', menuItems, scene);
 			
+			volumeEffector = new Effector(.5, 1, scalingRod, function(value) {
+				if (record) record.audio.rate(value, record.audio.soundID);
+			});
+			
 			scene.clearColor = new BABYLON.Color3(0, 0, 0);
 			return scene;
 		},
@@ -79,10 +83,12 @@ module.exports = function () {
 					if (gfx.createVector(record.transformNode.position, desk.vinylPosition).length() < .02) self.startRecord(record);
 				}
 				if (fader && fader.dragging) fader.update();
-				//self.updateBalloon();
+				self.updateBalloon();
+				volumeEffector.update();
 			}
 			if (record && record.spinning) record.transformNode.rotate(BABYLON.Axis.Y, .005 * record.audio.rate(), BABYLON.Space.WORLD);
 			if (record && record.playing) {
+				
 				if (timeCursor && record.progress < 1) {
 					timeCursor.position = gfx.createVector(record.timeCursorOrigin, record.timeCursorFinal).scale(record.progress);
 				}
@@ -228,7 +234,6 @@ module.exports = function () {
 			
 			setTimeout(function() {
 				record.audio.soundID = record.audio.play();
-				record.audio.rate(.8, record.audio.soundID);
 			}, 500);
 		},
 
@@ -693,9 +698,21 @@ module.exports = function () {
 	
 	class Effector {
 		
-		constructor() {
+		constructor(min, max, interpolator, modifierFunction) {
 			let self = this;
+			this.modifier = modifierFunction;
+			this.interpolator = interpolator;
+			this.min = min;
+			this.max = max;
+		}
+		
+		update() {
 			
+			if (this.interpolator) {
+				let state = this.min + (this.max - this.min) * this.interpolator.state;
+				console.log('interpolated state: ', state);
+				this.modifier(state);
+			}
 		}
 	}
 	

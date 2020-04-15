@@ -10,9 +10,9 @@
         "gulp-v3": "^3.12.1",
         "howler": "^2.1.3",
         "howler-plugin-effect-chain": "^0.1.2",
+        "pizzicato": "^0.6.4",
         "startaudiocontext": "^1.2.1",
-        "tunajs": "^1.0.11",
-        "pizzicato": "^0.6.4"
+        "tunajs": "^1.0.11"
     },
     "devDependencies": {
         "@babel/core": "^7.8.4",
