@@ -58,23 +58,8 @@ module.exports = function () {
 			self.setLighting();
 			self.addDesk();
 			self.loadAssets();
+			self.addDebugButtons();
 			
-			scene.onPointerDown = function (evt, pickResult) { // click for testing on desktop
-				if (pickResult.hit) {
-					picked = pickResult.pickedMesh;
-					if (picked.name === 'albumCover') self.selectRecord(picked);
-				}
-			};
-
-			document.addEventListener('keyup', function (event) {
-				let space = 32;
-				if (event.keyCode === space && record) {
-
-					Howler.addEffect(chorus);
-					self.togglePlay();
-				}
-			});
-
 			scene.clearColor = new BABYLON.Color3(0, 0, 0);
 			return scene;
 		},
@@ -218,7 +203,6 @@ module.exports = function () {
 		addDesk: function () {
 
 			BABYLON.OBJFileLoader.MATERIAL_LOADING_FAILS_SILENTLY = false;
-
 			desk = new BABYLON.TransformNode();
 			BABYLON.OBJFileLoader.OPTIMIZE_WITH_UV = true;
 			BABYLON.SceneLoader.ImportMesh('', './src/obj/', 'AudioEquipmentTexture.gltf', scene, function (meshChildren) {
@@ -229,7 +213,7 @@ module.exports = function () {
 				desk.position.x = 0, desk.position.y = .1, desk.position.z = 0;
 				desk.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
 				desk.scaling = new BABYLON.Vector3(.05, .05, .05);
-				desk.vinylPosition = new BABYLON.Vector3(-.42, 1.11, .005);
+				desk.vinylPosition = new BABYLON.Vector3(-.42, 1.1, .005);
 				
 				var test = new LevelFader(new BABYLON.Vector3(.185, 1.08, -.09), .07);
 			});
@@ -448,9 +432,10 @@ module.exports = function () {
 		},
 
 		setLighting: function () {
-			let hemisphericLight = new BABYLON.HemisphericLight('HemiLight', new BABYLON.Vector3(0, 10, 0), scene);
-			hemisphericLight.intensity = .1;
 			let ground = BABYLON.MeshBuilder.CreateGround('ground', { height: 20, width: 20, subdivisions: 4, isPickable: false }, scene);
+			
+			let pointLight = new BABYLON.HemisphericLight('HemiLight', new BABYLON.Vector3(0, 10, -5), scene);
+			pointLight.intensity = .1;
 		},
 
 		stopAllAudio: function () {
@@ -486,6 +471,25 @@ module.exports = function () {
 				};
 			});
 			assetsManager.load();
+		},
+		
+		addDebugButtons: function() {
+			let self = this;
+			scene.onPointerDown = function (evt, pickResult) { // click for testing on desktop
+				if (pickResult.hit) {
+					picked = pickResult.pickedMesh;
+					if (picked.name === 'albumCover') self.selectRecord(picked);
+				}
+			};
+
+			document.addEventListener('keyup', function (event) {
+				let space = 32;
+				if (event.keyCode === space && record) {
+
+					Howler.addEffect(chorus);
+					self.togglePlay();
+				}
+			});
 		}
 	};
 
@@ -548,21 +552,26 @@ module.exports = function () {
 		}
 
 		showRecord() {
-			let recordLabel = BABYLON.MeshBuilder.CreateDisc('record', { radius: .3, tessellation: 40, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
-			recordLabel.rotate(BABYLON.Axis.X, Math.PI / 2, BABYLON.Space.WORLD);
-			recordLabel.parent = this.transformNode;
-			recordLabel.material = new BABYLON.StandardMaterial('innderDiscMat', scene);
-			recordLabel.material.emissiveColor = new BABYLON.Color3.Red;
-			recordLabel.position = new BABYLON.Vector3(0, zBuffer, 0);
-			recordLabel.isPickable = false;
-			let recordLabelBack = recordLabel.clone();
-			recordLabelBack.position = new BABYLON.Vector3(0, -zBuffer, zBuffer);
-			let vinyl = BABYLON.MeshBuilder.CreateDisc('record', { radius: .9, tessellation: 6, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
-			vinyl.rotate(BABYLON.Axis.X, Math.PI / 2, BABYLON.Space.WORLD);
-			vinyl.parent = this.transformNode;
-			vinyl.position = new BABYLON.Vector3(0, 0, 0);
-			vinyl.clone().position = new BABYLON.Vector3(0, 0, 0);
-			this.transformNode.scaling = new BABYLON.Vector3(.2, .2, .2);
+			let recordMesh = new BABYLON.TransformNode();
+			let recordPosition = new BABYLON.Vector3(0, 0, 0);
+			let recordVinyl = BABYLON.MeshBuilder.CreateDisc('testRecord', { radius: .3, tessellation: 40, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
+			recordVinyl.parent = recordMesh;
+			recordVinyl.position = recordPosition;
+			recordVinyl.material = new BABYLON.StandardMaterial('recordVinylMat', scene);
+			recordVinyl.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
+			recordVinyl.material.invertRefractionY = true;
+			let recordLabel = BABYLON.MeshBuilder.CreateDisc('recordLabel', { radius: .1, tessellation: 40, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
+			recordLabel.parent = recordMesh;
+			recordLabel.rotate(BABYLON.Axis.X, Math.PI, BABYLON.Space.WORLD);
+			recordLabel.position = gfx.movePoint(recordVinyl.position, new BABYLON.Vector3(0, 0, -zBuffer));
+			recordLabel.material = new BABYLON.StandardMaterial('recordLabelMat', scene);
+			recordLabel.material.emissiveTexture = new BABYLON.Texture('./src/img/columbia2.png', scene);
+			let recordLabel2 = recordLabel.clone();
+			recordLabel2.position = gfx.movePoint(recordLabel2.position, new BABYLON.Vector3(0, 0, zBuffer * 2));
+			recordLabel2.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
+			recordMesh.rotate(BABYLON.Axis.X, Math.PI / 2, BABYLON.Space.WORLD);
+			this.transformNode = recordMesh;
+			this.transformNode.scaling = new BABYLON.Vector3(1.5, 1.5, 1.5);
 			this.inHand = true;
 		}
 
