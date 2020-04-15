@@ -116,24 +116,36 @@ module.exports = function () {
 				scalingRod.scalingState = true;
 				scalingRod.initialLength = gfx.createVector(leftController.devicePosition, rightController.devicePosition).length();
 			}
+			let minimumOffset = 1.6;
+			let controllerMidpoint = gfx.getMidpoint(leftController.devicePosition, rightController.devicePosition);
+			let balloonOrigin = rightController.devicePosition;
 			scalingRod.balloonTotalLength = .5;
-			scalingRod.controllerVector = gfx.createVector(leftController.devicePosition, rightController.devicePosition);
-			scalingRod.currentLength = scalingRod.controllerVector.length();
+			scalingRod.controllersVector = gfx.createVector(leftController.devicePosition, rightController.devicePosition);
+			scalingRod.balloonTotalVector = gfx.createVector(rightController.devicePosition, gfx.movePoint(rightController.devicePosition, new BABYLON.Vector3(0, scalingRod.balloonTotalLength, 0)));
+			scalingRod.currentLength = scalingRod.controllersVector.length();
 			let balloonLength = scalingRod.balloonTotalLength - scalingRod.currentLength;
 			if (balloonLength < 0) balloonLength = 0;
-			scalingRod.balloonVector = gfx.createVector(rightController.devicePosition, gfx.movePoint(rightController.devicePosition, new BABYLON.Vector3(0, 1, 0).scale(balloonLength)));
-			scalingRod.scaleFactor = ((scalingRod.currentLength / 2) / (scalingRod.initialLength / 2));
-			//cursor.size = cursor.scalingStartSize * scalingRod.scaleFactor;
-			// let totalScale = cursor.size / cursor.defaultSize;
-			// cursor.scaling = new BABYLON.Vector3(totalScale, totalScale, totalScale);
+			scalingRod.balloonVector = gfx.createVector(balloonOrigin, gfx.movePoint(balloonOrigin, new BABYLON.Vector3(0, 1, 0).scale(balloonLength))).scale(minimumOffset);
+			if (scalingRod.balloonVector.length() > scalingRod.balloonTotalLength) scalingRod.balloonVector = scalingRod.balloonVector.normalize().scale(scalingRod.balloonTotalLength);
 			
-			if (showVector2) showVector2.dispose();
-			showVector2 = gfx.createLine(leftController.devicePosition, scalingRod.controllerVector);
-			showVector2.isPickable = false;
+			if (scalingRod.balloonPositionIndicator) scalingRod.balloonPositionIndicator.dispose();
+			scalingRod.balloonPositionIndicator = BABYLON.MeshBuilder.CreateBox('balloon', { size: .01 }, scene);
+			scalingRod.balloonPositionIndicator.isPickable = false;
+			scalingRod.balloonPositionIndicator.position = gfx.movePoint(balloonOrigin, scalingRod.balloonVector);
+			if (!scalingRod.balloonPositionIndicator.material) {
+				scalingRod.balloonPositionIndicator.material = new BABYLON.StandardMaterial('balloonMaterial', scene);
+				scalingRod.balloonPositionIndicator.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
+				scalingRod.balloonPositionIndicator.material.alpha = 0.3;
+			}
 			
-			if (showVector3) showVector3.dispose();
-			showVector3 = gfx.createLine(rightController.devicePosition, scalingRod.balloonVector);
-			showVector3.isPickable = false;
+			// show progress indicators
+			if (scalingRod.balloonTotalVectorMesh) scalingRod.balloonTotalVectorMesh.dispose();
+			scalingRod.balloonTotalVectorMesh = gfx.createLine(balloonOrigin, scalingRod.balloonTotalVector, new BABYLON.Color3(1, 1, 1), .5);
+			scalingRod.balloonTotalVectorMesh.isPickable = false;
+			if (scalingRod.balloonVectorVectorMesh) scalingRod.balloonVectorVectorMesh.dispose();
+			scalingRod.balloonVectorVectorMesh = gfx.createLine(balloonOrigin, scalingRod.balloonVector, new BABYLON.Color3(0, 1, 0), .5);
+			scalingRod.balloonVectorVectorMesh.isPickable = false;
+			scalingRod.state = scalingRod.balloonVector.length() / scalingRod.balloonTotalLength; // final 0.0.1 value
 		},
 		
 		togglePlay: function() {
@@ -679,6 +691,14 @@ module.exports = function () {
 		}
 	}
 	
+	class Effector {
+		
+		constructor() {
+			let self = this;
+			
+		}
+	}
+	
 	class MenuItemBlock {
 
 		constructor(pt, title) {
@@ -811,7 +831,7 @@ module.exports = function () {
 		
 		update() {
 			let self = this;
-			 
+			
 			let sliderStateVector = gfx.createVector(self.origin, self.box.position);
 			if (sliderStateVector.length > 0) gfx.movePoint(self.dragStart, sliderStateVector);
 			let dragDisplacement = gfx.createVector(self.dragStart, new BABYLON.Vector3(self.dragStart.x, self.dragStart.y, rightController.devicePosition.z));
