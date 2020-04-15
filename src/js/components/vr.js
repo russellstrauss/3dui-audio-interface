@@ -565,7 +565,7 @@ module.exports = function () {
 			recordLabel.rotate(BABYLON.Axis.X, Math.PI, BABYLON.Space.WORLD);
 			recordLabel.position = gfx.movePoint(recordVinyl.position, new BABYLON.Vector3(0, 0, -zBuffer));
 			recordLabel.material = new BABYLON.StandardMaterial('recordLabelMat', scene);
-			recordLabel.material.emissiveTexture = new BABYLON.Texture('./src/img/columbia2.png', scene);
+			recordLabel.material.emissiveTexture = new BABYLON.Texture('./src/img/columbia.png', scene);
 			let recordLabel2 = recordLabel.clone();
 			recordLabel2.position = gfx.movePoint(recordLabel2.position, new BABYLON.Vector3(0, 0, zBuffer * 2));
 			recordLabel2.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
