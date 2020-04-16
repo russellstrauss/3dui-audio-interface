@@ -7,7 +7,7 @@ require('howler-plugin-effect-chain');
 module.exports = function () {
 
 	var canvas, engine, scene, camera, vrHelper;
-	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, lastPicked, selectedMesh, fader, scalingRod = { balloonTotalLength: .3 }, cursor;
+	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, lastPicked, selectedMesh, intersectedMesh, fader, scalingRod = { balloonTotalLength: .3 }, cursor;
 	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0), zBuffer = .01;
 	var menuItems = [], effectors = [], highlightColor = new BABYLON.Color3(.5, 0, 0), selectedColor = new BABYLON.Color3(1, 0, 0), activeTool, balloonOrigin;
 	var record, records = [], desk, testPoint, showTestPoints = false, showVector, showVector2, showVector3, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 1000, albumCount = 0, vinylStart, maxRecordCount = 1;
@@ -150,7 +150,6 @@ module.exports = function () {
 			let self = this;
 			if (rightController && leftController) {
 				
-				if (!picked) self.updateHoverStates();
 				if (fader) fader.update();
 				self.updateCursor();
 				self.updateBalloon();
@@ -204,11 +203,6 @@ module.exports = function () {
 			if (record.audio) {
 				record.progress = record.audio.seek() / record.audio.duration();
 			}
-		},
-		
-		updateHoverStates: function() {
-			if (lastPicked && typeof lastPicked.getParent !== 'undefined' && lastPicked.getParent() instanceof LevelFader && !lastPicked.getParent().dragging) lastPicked.getParent().unhighlight();
-			if (lastPicked && typeof lastPicked.getParent !== 'undefined' && lastPicked.getParent() instanceof MenuItemBlock) lastPicked.getParent().unhighlight();
 		},
 		
 		updateEffectors: function() {
@@ -514,7 +508,7 @@ module.exports = function () {
 			cursor.material = new BABYLON.StandardMaterial('cursorMaterial', scene);
 			cursor.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
 			cursor.material.alpha = 0.05;
-			cursor.length = .75;
+			cursor.length = .6;
 			//cursor.material.wireframe = true;
 			cursor.isPickable = false;
 			
@@ -527,19 +521,23 @@ module.exports = function () {
 			cursor.direction = rightController.getForwardRay(1).direction;
 			cursor.position = rightController.devicePosition.add(rightController.getForwardRay(1).direction.scale(cursor.length));
 			
+			let noneIntersected = true;
 			menuItems.forEach(function(menuItem) {
 				if (menuItem.box.intersectsMesh(cursor)) {
 					menuItem.highlight();
+					intersectedMesh = menuItem.box;
+					noneIntersected = false;
 				}
 				else {
 					menuItem.unhighlight();
 				}
+				if (noneIntersected) intersectedMesh = null;
 			});
 		},
 
 		selectRecord: function (picked) {
 			let self = this;
-			if (picked && (picked.name === 'albumCover')) {
+			if (picked.name === 'albumCover') {
 
 				if (record && record.audio) {
 					record.audio.stop();
@@ -583,27 +581,19 @@ module.exports = function () {
 		},
 		rightTrigger: function (webVRController, stateObject) {
 			let self = this;
-			if (picked && picked.name === 'albumCover') self.selectRecord(picked);
+			if (picked) self.selectRecord(picked);
 			
-			if (self.instanceOf(picked, LevelFader)) {
-				fader = picked.getParent();
-				if (!fader.dragging) fader.startDrag(rightController.devicePosition.clone());
-				fader.dragging = true;
-				fader.highlight();
-			}
-			
-			if (self.instanceOf(picked, Toggle)) picked.getParent().toggle();
-				
-			if (selectedMesh != null && selectedMesh.getParent && selectedMesh.getParent() instanceof MenuItemBlock) selectedMesh.getParent().setActive();
+			if (self.parentInstanceOf(intersectedMesh, Toggle)) intersectedMesh.getParent().toggle();
+			if (intersectedMesh && self.parentInstanceOf(intersectedMesh, MenuItemBlock)) intersectedMesh.getParent().setActive();
 		},
 		
-		instanceOf: function(object, myClass) {
+		parentInstanceOf: function(object, myClass) {
 			return object && typeof object.getParent !== 'undefined' && object.getParent() instanceof myClass;
 		},
 		
 		rightTriggerRelease: function() {
 			if (fader) fader.endDrag();
-			this.unselectMenuItemBlocks();
+			if (activeTool) activeTool.setInactive();
 		},
 		leftSecondaryTrigger: function(webVRController) {
 			this.activateTeleportation();
@@ -659,8 +649,8 @@ module.exports = function () {
 		unselectMenuItemBlocks: function () {
 			let self = this;
 			menuItems.forEach(function(menuItem) {
-				if (!self.instanceOf(menuItem.box, Toggle)) menuItem.setInactive();
-				else if (self.instanceOf(menuItem.box, Toggle)) {
+				if (!self.parentInstanceOf(menuItem.box, Toggle)) menuItem.setInactive();
+				else if (self.parentInstanceOf(menuItem.box, Toggle)) {
 					menuItem.hideLabel();
 				}
 			});
@@ -751,7 +741,7 @@ module.exports = function () {
 			});
 			this.audio = new Howl({
 				src: [self.audioPath],
-				html5: true,
+				html5: false,
 				preload: true,
 				autoplay: false,
 				onload: function () {
