@@ -74,75 +74,105 @@ module.exports = function () {
 				if (record) Howler.volume(value);
 			});
 			
-			var phaser = new tuna.Phaser({
-				rate: 1.2,                     //0.01 to 8 is a decent range, but higher values are possible
-				depth: 0.3,                    //0 to 1
-				feedback: 0.2,                 //0 to 1+
-				stereoPhase: 30,               //0 to 180
-				baseModulationFrequency: 700,  //500 to 1500
-				bypass: 0
-			});
-			let phaserDial = new MenuItemBlock(new BABYLON.Vector3(.2, 1.16, .9), 'Phaser');
-			phaserDial.effector = new Effector(phaserDial, 0, 1, scalingRod, function(value) {
-				if (record) this.effect.depth = value;
-			});
-			phaserDial.effector.effect = phaser;
+			// var phaser = new tuna.Phaser({
+			// 	rate: 1.2,                     //0.01 to 8 is a decent range, but higher values are possible
+			// 	depth: 0.3,                    //0 to 1
+			// 	feedback: 0.2,                 //0 to 1+
+			// 	stereoPhase: 30,               //0 to 180
+			// 	baseModulationFrequency: 700,  //500 to 1500
+			// 	bypass: 0
+			// });
+			// let phaserDial = new MenuItemBlock(new BABYLON.Vector3(.2, 1.16, .9), 'Phaser');
+			// phaserDial.effector = new Effector(phaserDial, 0, 1, scalingRod, function(value) {
+			// 	if (record) this.effect.depth = value;
+			// });
+			// phaserDial.effector.effect = phaser;
 			
-			var overdrive = new tuna.Overdrive({
-				outputGain: -20,           //-42 to 0 in dB
-				drive: 0.7,              //0 to 1
-				curveAmount: 1,          //0 to 1
-				algorithmIndex: 0,       //0 to 5, selects one of our drive algorithms
-				bypass: 0
-			});
-			let overdriveDial = new MenuItemBlock(new BABYLON.Vector3(.28, 1.16, .9), 'Overdrive');
-			overdriveDial.effector = new Effector(overdriveDial, 0, 1, scalingRod, function(value) {
-				if (record) this.effect.drive = value;
-			});
-			overdriveDial.effector.effect = overdrive;
+			// var overdrive = new tuna.Overdrive({
+			// 	outputGain: -20,           //-42 to 0 in dB
+			// 	drive: 0.7,              //0 to 1
+			// 	curveAmount: 1,          //0 to 1
+			// 	algorithmIndex: 0,       //0 to 5, selects one of our drive algorithms
+			// 	bypass: 0
+			// });
+			// let overdriveDial = new MenuItemBlock(new BABYLON.Vector3(.28, 1.16, .9), 'Overdrive');
+			// overdriveDial.effector = new Effector(overdriveDial, 0, 1, scalingRod, function(value) {
+			// 	if (record) this.effect.drive = value;
+			// });
+			// overdriveDial.effector.effect = overdrive;
 			
-			var wahwah = new tuna.WahWah({
-				automode: true,                //true/false
-				baseFrequency: 0.5,            //0 to 1
-				excursionOctaves: 2,           //1 to 6
-				sweep: 0.2,                    //0 to 1
-				resonance: 10,                 //1 to 100
-				sensitivity: 0.5,              //-1 to 1
-				bypass: 0
-			});
-			let wahwahDial = new MenuItemBlock(new BABYLON.Vector3(.36, 1.16, .9), 'Wahwah');
-			wahwahDial.effector = new Effector(wahwahDial, 0, 100, scalingRod, function(value) {
-				if (record) this.effect.resonance = value;
-			});
-			wahwahDial.effector.effect = wahwah;
+			// var wahwah = new tuna.WahWah({
+			// 	automode: true,                //true/false
+			// 	baseFrequency: 0.5,            //0 to 1
+			// 	excursionOctaves: 2,           //1 to 6
+			// 	sweep: 0.2,                    //0 to 1
+			// 	resonance: 10,                 //1 to 100
+			// 	sensitivity: 0.5,              //-1 to 1
+			// 	bypass: 0
+			// });
+			// let wahwahDial = new MenuItemBlock(new BABYLON.Vector3(.36, 1.16, .9), 'Wahwah');
+			// wahwahDial.effector = new Effector(wahwahDial, 0, 100, scalingRod, function(value) {
+			// 	if (record) this.effect.resonance = value;
+			// });
+			// wahwahDial.effector.effect = wahwah;
 			
-			var bitcrusher = new tuna.Bitcrusher({
-				bits: 4,          //1 to 16
-				normfreq: 0.1,    //0 to 1
-				bufferSize: 4096  //256 to 16384
-			});
-			let bitcrusherDial = new MenuItemBlock(new BABYLON.Vector3(.44, 1.16, .9), 'Bitcrusher');
-			bitcrusherDial.effector = new Effector(bitcrusherDial, 0, 1, scalingRod, function(value) {
-				if (record) this.effect.normfreq = value;
-			});
-			bitcrusherDial.effector.effect = bitcrusher;
+			// var bitcrusher = new tuna.Bitcrusher({
+			// 	bits: 4,          //1 to 16
+			// 	normfreq: 0.1,    //0 to 1
+			// 	bufferSize: 4096  //256 to 16384
+			// });
+			// let bitcrusherDial = new MenuItemBlock(new BABYLON.Vector3(.44, 1.16, .9), 'Bitcrusher');
+			// bitcrusherDial.effector = new Effector(bitcrusherDial, 0, 1, scalingRod, function(value) {
+			// 	if (record) this.effect.normfreq = value;
+			// });
+			// bitcrusherDial.effector.effect = bitcrusher;
 			
-			var moog = new tuna.MoogFilter({
-				cutoff: 0.065,    //0 to 1
-				resonance: 3.5,   //0 to 4
-				bufferSize: 4096  //256 to 16384
-			});
-			let moogDial = new MenuItemBlock(new BABYLON.Vector3(.52, 1.16, .9), 'Moog');
-			moogDial.effector = new Effector(moogDial, 0, 4, scalingRod, function(value) {
-				if (record) this.effect.resonance = value;
-			});
-			moogDial.effector.effect = moog;
+			// var moog = new tuna.MoogFilter({
+			// 	cutoff: 0.065,    //0 to 1
+			// 	resonance: 3.5,   //0 to 4
+			// 	bufferSize: 4096  //256 to 16384
+			// });
+			// let moogDial = new MenuItemBlock(new BABYLON.Vector3(.52, 1.16, .9), 'Moog');
+			// moogDial.effector = new Effector(moogDial, 0, 4, scalingRod, function(value) {
+			// 	if (record) this.effect.resonance = value;
+			// });
+			// moogDial.effector.effect = moog;
 			
-			let toggle = new Toggle(new BABYLON.Vector3(.2, 1.2, 1.25), 'Toggle', function() {
+			var wahwahOptions = {
 				
-				if (this.active) this.setInactive();
-				if (!this.active) this.setActive();
-			});
+				baseFrequency: {
+					min: 0,
+					max: 1
+				},
+				excursionOctaves: {
+					min: 1,
+					max: 6
+				},
+				sweep: {
+					min: 0,
+					max: 1
+				},
+				resonance: {
+					min: 1,
+					max: 100
+				},
+				sensitivity: {
+					min: -1,
+					max: 1
+				},
+				tunaOptions: {
+					automode: true,                //true/false
+					baseFrequency: 0.5,            //0 to 1
+					excursionOctaves: 2,           //1 to 6
+					sweep: 0.2,                    //0 to 1
+					resonance: 10,                 //1 to 100
+					sensitivity: 0.5,              //-1 to 1
+					bypass: 0
+				}
+			};
+			var wahwah = new tuna.WahWah(wahwahOptions.tunaOptions);
+			console.log(wahwah);
+			let wahwahToggle = new Toggle(new BABYLON.Vector3(.24, 1.16, .75), 'Wahwah', wahwah, wahwahOptions);
 		},
 		
 		everyFrame: function() {
@@ -504,10 +534,10 @@ module.exports = function () {
 		addCursor: function() {
 			
 			let self = this;
-			cursor = BABYLON.MeshBuilder.CreateIcoSphere('cursor', { radius: .03, subdivisions: 2 }, scene);
+			cursor = BABYLON.MeshBuilder.CreateIcoSphere('cursor', { radius: .02, subdivisions: 2 }, scene);
 			cursor.material = new BABYLON.StandardMaterial('cursorMaterial', scene);
 			cursor.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
-			cursor.material.alpha = 0.05;
+			cursor.material.alpha = 0.08;
 			cursor.length = .6;
 			//cursor.material.wireframe = true;
 			cursor.isPickable = false;
@@ -583,7 +613,7 @@ module.exports = function () {
 			let self = this;
 			if (picked) self.selectRecord(picked);
 			
-			if (self.parentInstanceOf(intersectedMesh, Toggle)) intersectedMesh.getParent().toggle();
+			if (self.parentInstanceOf(intersectedMesh, Toggle)) intersectedMesh.getParent().toggleState();
 			if (intersectedMesh && self.parentInstanceOf(intersectedMesh, MenuItemBlock)) intersectedMesh.getParent().setActive();
 		},
 		
@@ -658,7 +688,7 @@ module.exports = function () {
 		
 		setLighting: function () {
 			let ground = BABYLON.MeshBuilder.CreateGround('ground', { height: 20, width: 20, subdivisions: 4, isPickable: false }, scene);
-			
+			ground.isPickable = false;
 			let pointLight = new BABYLON.HemisphericLight('HemiLight', new BABYLON.Vector3(0, 10, -5), scene);
 			pointLight.intensity = .1;
 		},
@@ -943,7 +973,7 @@ module.exports = function () {
 			balloonOrigin = null;
 		}
 		highlight() {
-			if (!this.active) {
+			if (!this.active && !balloonOrigin) {
 				this.box.material.emissiveColor = highlightColor;
 				this.showLabel();
 			}
@@ -974,22 +1004,55 @@ module.exports = function () {
 	
 	class Toggle extends MenuItemBlock {
 		
-		constructor(pt, title, toggleFunc) {
-
+		constructor(pt, title, effect, effectOptions) {
+			
 			super(pt, title);
-			this.toggle = toggleFunc;
+			let self = this;
+			self.effectors = [];
+			self.effect = effect;
+			self.effectOptions = effectOptions;
+			
+			Object.entries(self.effectOptions).forEach(function(item, index) {
+				let attribute = item[0];
+				if (attribute === 'tunaOptions') return;
+				console.log(item[0]);
+				let spacing = .06;
+				let location = gfx.movePoint(pt, new BABYLON.Vector3(1, 0, 0).scale(index * spacing + .1));
+				let effectorDial = new MenuItemBlock(location, attribute);
+				effectorDial.effector = new Effector(effectorDial, effectOptions[attribute].min, effectOptions[attribute].max, scalingRod, function(value) {
+					if (record) self.effect[attribute] = value;
+				});
+				effectorDial.effector.effect = self.effect;
+				self.effectors.push(effectorDial.effector);
+			});
 		}
 		
+		toggleState() {
+			if (this.active) this.setInactive();
+			if (!this.active) this.setActive();
+		}
 		setActive() {
 			this.box.material.emissiveColor = selectedColor;
 			this.active = true;
 		}
-		// setInactive() {
-		// 	this.box.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
-		// 	this.active = false;
-		// 	this.hideLabel()
-		// 	balloonOrigin = null;
-		// }
+		setInactive() {
+			
+			this.box.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
+			this.active = false;
+			balloonOrigin = null;
+			if (intersectedMesh !== this.box) this.hideLabel();
+		}
+		highlight() {
+			super.highlight();
+			super.showLabel();
+		}
+		unhighlight() {
+			if (this.active) this.hideLabel();
+			else {
+				this.box.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
+				this.hideLabel();
+			}
+		}
 	}
 	
 	class LevelFader {
