@@ -138,27 +138,56 @@ module.exports = function () {
 			// });
 			// moogDial.effector.effect = moog;
 			
-			var wahwahOptions = {
-				
+			let bitcrusherOptions = {
+				bits: {
+					min: 1,
+					max: 16,
+					displayName: 'Bits'
+				},
+				normfreq: {
+					min: 0,
+					max: 1,
+					displayName: 'Norm Frequency'
+				},
+				bufferSize: {
+					min: 256,
+					max: 16384,
+					displayName: 'Buffer Size'
+				},
+				tunaOptions: {
+					bits: 4,          //1 to 16
+					normfreq: 0.1,    //0 to 1
+					bufferSize: 4096  //256 to 16384
+				}
+			};
+			let bitcrusher = new tuna.Bitcrusher(bitcrusherOptions.tunaOptions);
+			let bitcrusherToggle = new Toggle(new BABYLON.Vector3(.24, 1.16, .7), 'Bitcrusher', bitcrusher, bitcrusherOptions);
+			
+			let wahwahOptions = {
 				baseFrequency: {
 					min: 0,
-					max: 1
+					max: 1,
+					displayName: 'Base Frequency'
 				},
 				excursionOctaves: {
 					min: 1,
-					max: 6
+					max: 6,
+					displayName: 'Excursion Octaves'
 				},
 				sweep: {
 					min: 0,
-					max: 1
+					max: 1,
+					displayName: 'Sweep'
 				},
 				resonance: {
 					min: 1,
-					max: 100
+					max: 100,
+					displayName: 'Resonance'
 				},
 				sensitivity: {
 					min: -1,
-					max: 1
+					max: 1,
+					displayName: 'Sensitivity'
 				},
 				tunaOptions: {
 					automode: true,                //true/false
