@@ -84,10 +84,59 @@ module.exports = function () {
 			});
 			let phaserDial = new MenuItemBlock(new BABYLON.Vector3(.2, 1.16, .9), 'Phaser');
 			phaserDial.effector = new Effector(phaserDial, 0, 1, scalingRod, function(value) {
-				if (record) phaser.depth = value;
+				if (record) this.effect.depth = value;
 			});
+			phaserDial.effector.effect = phaser;
 			
-			Howler.addEffect(phaser);
+			var overdrive = new tuna.Overdrive({
+				outputGain: 0,           //-42 to 0 in dB
+				drive: 0.7,              //0 to 1
+				curveAmount: 1,          //0 to 1
+				algorithmIndex: 0,       //0 to 5, selects one of our drive algorithms
+				bypass: 0
+			});
+			let overdriveDial = new MenuItemBlock(new BABYLON.Vector3(.28, 1.16, .9), 'Overdrive');
+			overdriveDial.effector = new Effector(overdriveDial, 0, 1, scalingRod, function(value) {
+				if (record) this.effect.drive = value;
+			});
+			overdriveDial.effector.effect = overdrive;
+			
+			var wahwah = new tuna.WahWah({
+				automode: true,                //true/false
+				baseFrequency: 0.5,            //0 to 1
+				excursionOctaves: 2,           //1 to 6
+				sweep: 0.2,                    //0 to 1
+				resonance: 10,                 //1 to 100
+				sensitivity: 0.5,              //-1 to 1
+				bypass: 0
+			});
+			let wahwahDial = new MenuItemBlock(new BABYLON.Vector3(.36, 1.16, .9), 'Wahwah');
+			wahwahDial.effector = new Effector(wahwahDial, 0, 100, scalingRod, function(value) {
+				if (record) this.effect.resonance = value;
+			});
+			wahwahDial.effector.effect = wahwah;
+			
+			var bitcrusher = new tuna.Bitcrusher({
+				bits: 4,          //1 to 16
+				normfreq: 0.1,    //0 to 1
+				bufferSize: 4096  //256 to 16384
+			});
+			let bitcrusherDial = new MenuItemBlock(new BABYLON.Vector3(.44, 1.16, .9), 'Bitcrusher');
+			bitcrusherDial.effector = new Effector(bitcrusherDial, 0, 1, scalingRod, function(value) {
+				if (record) this.effect.normfreq = value;
+			});
+			bitcrusherDial.effector.effect = bitcrusher;
+			
+			var moog = new tuna.MoogFilter({
+				cutoff: 0.065,    //0 to 1
+				resonance: 3.5,   //0 to 4
+				bufferSize: 4096  //256 to 16384
+			});
+			let moogDial = new MenuItemBlock(new BABYLON.Vector3(.52, 1.16, .9), 'Moog');
+			moogDial.effector = new Effector(moogDial, 0, 4, scalingRod, function(value) {
+				if (record) this.effect.resonance = value;
+			});
+			moogDial.effector.effect = moog;
 		},
 		
 		everyFrame: function() {
@@ -338,7 +387,7 @@ module.exports = function () {
 			self.deactivateTeleportation();
 			vrHelper.teleportationTarget = BABYLON.Mesh.CreateSphere('ground', 4, 0.05, scene);
 			vrHelper._teleportBackwardsVector = new BABYLON.Vector3(0, -.1, -.1);
-			console.log('vrHelper: ', vrHelper);
+			//console.log('vrHelper: ', vrHelper);
 			
 			vrHelper.onNewMeshPicked.add(function(pickingInfo) { // where controller is resting/pointing, fired upon new target
 				picked = pickingInfo.pickedMesh;
@@ -819,8 +868,8 @@ module.exports = function () {
 			this.active = true;
 			activeTool = this;
 			balloonOrigin = this.position;
-			console.log('set active');
 			this.elevateLabel();
+			if (this.effector.effect) Howler.addEffect(this.effector.effect);
 		}
 		
 		setInactive() {
@@ -852,10 +901,7 @@ module.exports = function () {
 		elevateLabel() {
 			this.label.plane.visibility = 1;
 			this.label.line.visibility = 0;
-			console.log('init p', this.position);
 			this.label.plane.position = gfx.movePoint(this.position, new BABYLON.Vector3(0, scalingRod.balloonTotalLength + .02, 0));
-			console.log('elevated p', this.label.plane.position);
-			console.log('plane: ', this.label.plane);
 		}
 		
 		showLabel() {
