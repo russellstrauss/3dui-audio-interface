@@ -7,7 +7,7 @@ require('howler-plugin-effect-chain');
 module.exports = function () {
 
 	var canvas, engine, scene, camera, vrHelper;
-	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, lastPicked, selectedMesh, fader, scalingRod = { balloonTotalLength: .3 };
+	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, lastPicked, selectedMesh, fader, scalingRod = { balloonTotalLength: .3 }, cursor;
 	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0), zBuffer = .01;
 	var menuItems = [], effectors = [], highlightColor = new BABYLON.Color3(.5, 0, 0), selectedColor = new BABYLON.Color3(1, 0, 0), activeTool, balloonOrigin;
 	var record, records = [], desk, testPoint, showTestPoints = false, showVector, showVector2, showVector3, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 1000, albumCount = 0, vinylStart, maxRecordCount = 1;
@@ -137,6 +137,12 @@ module.exports = function () {
 				if (record) this.effect.resonance = value;
 			});
 			moogDial.effector.effect = moog;
+			
+			let toggle = new Toggle(new BABYLON.Vector3(.2, 1.2, 1.25), 'Toggle', function() {
+				
+				if (this.active) this.setInactive();
+				if (!this.active) this.setActive();
+			});
 		},
 		
 		everyFrame: function() {
@@ -144,30 +150,14 @@ module.exports = function () {
 			let self = this;
 			if (rightController && leftController) {
 				
-				vrHelper.webVROptions.defaultHeight = 2;
-				
-				if (record && desk.vinylPosition && record.inHand) {
-					record.transformNode.position = leftController.devicePosition.add(leftController.getForwardRay(1).direction.scale(.25));
-					if (gfx.createVector(record.transformNode.position, desk.vinylPosition).length() < .02) self.startRecord(record);
-				}
-				if (fader && fader.dragging) fader.update();
-				if (!picked) {
-					if (lastPicked && typeof lastPicked.getParent !== 'undefined' && lastPicked.getParent() instanceof LevelFader && !lastPicked.getParent().dragging) lastPicked.getParent().unhighlight();
-					if (lastPicked && typeof lastPicked.getParent !== 'undefined' && lastPicked.getParent() instanceof MenuItemBlock) lastPicked.getParent().unhighlight();
-				}
+				if (!picked) self.updateHoverStates();
+				if (fader) fader.update();
+				self.updateCursor();
 				self.updateBalloon();
 				self.updateEffectors();
+				self.updatePhysicalRecord()
 			}
-			if (record && record.spinning) record.transformNode.rotate(BABYLON.Axis.Y, .005 * record.audio.rate(), BABYLON.Space.WORLD);
-			if (record && record.playing) {
-				
-				if (timeCursor && record.progress < 1) {
-					timeCursor.position = gfx.createVector(record.timeCursorOrigin, record.timeCursorFinal).scale(record.progress);
-				}
-				if (record.audio) {
-					record.progress = record.audio.seek() / record.audio.duration();
-				}
-			}
+			if (record && record.playing) self.updateRecordProgress();
 			
 			if (beginTurning) {
 				if (intersectedRecord) {
@@ -196,6 +186,29 @@ module.exports = function () {
 					}
 				}
 			}
+		},
+		
+		updatePhysicalRecord: function() {
+			let self = this;
+			if (record && desk.vinylPosition && record.inHand) {
+				record.transformNode.position = leftController.devicePosition.add(leftController.getForwardRay(1).direction.scale(.25));
+				if (gfx.createVector(record.transformNode.position, desk.vinylPosition).length() < .02) self.startRecord(record);
+			}
+		},
+		
+		updateRecordProgress: function() {
+			if (record.spinning) record.transformNode.rotate(BABYLON.Axis.Y, .005 * record.audio.rate(), BABYLON.Space.WORLD);
+			if (timeCursor && record.progress < 1) {
+				timeCursor.position = gfx.createVector(record.timeCursorOrigin, record.timeCursorFinal).scale(record.progress);
+			}
+			if (record.audio) {
+				record.progress = record.audio.seek() / record.audio.duration();
+			}
+		},
+		
+		updateHoverStates: function() {
+			if (lastPicked && typeof lastPicked.getParent !== 'undefined' && lastPicked.getParent() instanceof LevelFader && !lastPicked.getParent().dragging) lastPicked.getParent().unhighlight();
+			if (lastPicked && typeof lastPicked.getParent !== 'undefined' && lastPicked.getParent() instanceof MenuItemBlock) lastPicked.getParent().unhighlight();
 		},
 		
 		updateEffectors: function() {
@@ -390,13 +403,14 @@ module.exports = function () {
 		addButtonEvents: function () {
 
 			let self = this;
+			vrHelper.webVROptions.defaultHeight = 2;
 			vrHelper.enableInteractions();
 			vrHelper.enableTeleportation({
 				floorMeshName: 'ground'
 			});
 			self.deactivateTeleportation();
 			vrHelper.teleportationTarget = BABYLON.Mesh.CreateSphere('ground', 4, 0.05, scene);
-			vrHelper._teleportBackwardsVector = new BABYLON.Vector3(0, -.1, -.1);
+			//vrHelper._teleportBackwardsVector = new BABYLON.Vector3(0, -.1, -.1);
 			//console.log('vrHelper: ', vrHelper);
 			
 			vrHelper.onNewMeshPicked.add(function(pickingInfo) { // where controller is resting/pointing, fired upon new target
@@ -405,14 +419,7 @@ module.exports = function () {
 				if (rightController) {
 					
 					let isRightControllerPick = gfx.createVector(pickingInfo.ray.origin, rightController.devicePosition).length() < .1;
-					if (isRightControllerPick) {
-						
-						if (lastPicked && typeof lastPicked.getParent !== 'undefined' && lastPicked.getParent() instanceof LevelFader && !lastPicked.getParent().dragging) lastPicked.getParent().unhighlight();
-						if (typeof picked.getParent !== 'undefined' && picked.getParent() instanceof LevelFader) picked.getParent().highlight();
-						if (lastPicked && typeof lastPicked.getParent !== 'undefined' && lastPicked.getParent() instanceof MenuItemBlock) lastPicked.getParent().unhighlight();
-						if (typeof picked.getParent !== 'undefined' && picked.getParent() instanceof MenuItemBlock) picked.getParent().highlight();
-						lastPicked = picked;
-					}
+					if (isRightControllerPick) lastPicked = picked;
 					else {
 						picked = null;
 					}
@@ -499,6 +506,36 @@ module.exports = function () {
 				}
 			});
 		},
+		
+		addCursor: function() {
+			
+			let self = this;
+			cursor = BABYLON.MeshBuilder.CreateIcoSphere('cursor', { radius: .03, subdivisions: 2 }, scene);
+			cursor.material = new BABYLON.StandardMaterial('cursorMaterial', scene);
+			cursor.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
+			cursor.material.alpha = 0.05;
+			cursor.length = .75;
+			//cursor.material.wireframe = true;
+			cursor.isPickable = false;
+			
+			self.updateCursor();
+		},
+		
+		updateCursor: function() {
+			let self = this;
+			if (!cursor) self.addCursor();
+			cursor.direction = rightController.getForwardRay(1).direction;
+			cursor.position = rightController.devicePosition.add(rightController.getForwardRay(1).direction.scale(cursor.length));
+			
+			menuItems.forEach(function(menuItem) {
+				if (menuItem.box.intersectsMesh(cursor)) {
+					menuItem.highlight();
+				}
+				else {
+					menuItem.unhighlight();
+				}
+			});
+		},
 
 		selectRecord: function (picked) {
 			let self = this;
@@ -548,15 +585,22 @@ module.exports = function () {
 			let self = this;
 			if (picked && picked.name === 'albumCover') self.selectRecord(picked);
 			
-			if (typeof picked.getParent !== 'undefined' && picked.getParent() instanceof LevelFader) {
+			if (self.instanceOf(picked, LevelFader)) {
 				fader = picked.getParent();
 				if (!fader.dragging) fader.startDrag(rightController.devicePosition.clone());
 				fader.dragging = true;
 				fader.highlight();
 			}
+			
+			if (self.instanceOf(picked, Toggle)) picked.getParent().toggle();
 				
 			if (selectedMesh != null && selectedMesh.getParent && selectedMesh.getParent() instanceof MenuItemBlock) selectedMesh.getParent().setActive();
 		},
+		
+		instanceOf: function(object, myClass) {
+			return object && typeof object.getParent !== 'undefined' && object.getParent() instanceof myClass;
+		},
+		
 		rightTriggerRelease: function() {
 			if (fader) fader.endDrag();
 			this.unselectMenuItemBlocks();
@@ -569,9 +613,13 @@ module.exports = function () {
 			this.deactivateTeleportation();
 		},
 		rightSecondaryTrigger: function (webVRController, stateObject) { },
-		joystickLeft: function (webVRController, stateObject) { },
+		joystickLeft: function (webVRController, stateObject) {
+			this.adjustCursorLength(stateObject);
+		},
 		leftJoystickRelease: function () { },
-		joystickRight: function (webVRController, stateObject) { },
+		joystickRight: function (webVRController, stateObject) {
+			this.adjustCursorLength(stateObject);
+		},
 		rightJoystickRelease: function () { },
 		activateTeleportation: function () {
 			vrHelper.teleportationEnabled = true;
@@ -592,15 +640,29 @@ module.exports = function () {
 				vrHelper.teleportationTarget.material.wireframe = true;
 			}
 		},
-
 		deactivateTeleportation: function () {
 			vrHelper.teleportationEnabled = false;
 			vrHelper._rotationAllowed = false;
 		},
 		
+		adjustCursorLength(stateObject) {
+			if (stateObject.y > 0.4 && cursor.length > .1) { // low speed
+				cursor.speed = -.005;
+				cursor.length += cursor.speed;
+			}
+			if (stateObject.y < -0.4) {
+				cursor.speed = .005;
+				cursor.length += cursor.speed;
+			}
+		},
+		
 		unselectMenuItemBlocks: function () {
+			let self = this;
 			menuItems.forEach(function(menuItem) {
-				menuItem.setInactive();
+				if (!self.instanceOf(menuItem.box, Toggle)) menuItem.setInactive();
+				else if (self.instanceOf(menuItem.box, Toggle)) {
+					menuItem.hideLabel();
+				}
 			});
 		},
 		
@@ -841,6 +903,7 @@ module.exports = function () {
 			this.selecting = false;
 			this.label = new BABYLON.TransformNode();
 			this.box = BABYLON.MeshBuilder.CreateBox('MenuItemBlock', {size: this.boxSize}, scene);
+			this.box.isPickable = false;
 			this.box.position = new BABYLON.Vector3(pt.x, pt.y + this.boxSize/2, pt.z);
 			this.box.material = new BABYLON.StandardMaterial('menuItemMaterial', scene);
 			menuItems.push(this);
@@ -857,6 +920,7 @@ module.exports = function () {
 			plane.isPickable = false;
 			plane.defaultPosition = gfx.movePoint(this.position, new BABYLON.Vector3(0, this.boxSize + .08, 0));
 			plane.position = plane.defaultPosition;
+			plane.isPickable = false;
 			let line = gfx.createLine(gfx.movePoint(this.position, new BABYLON.Vector3(0, this.boxSize + .01, 0)), new BABYLON.Vector3(0, .05, 0), white);
 			line.isPickable = false;
 			let advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(plane);
@@ -873,7 +937,6 @@ module.exports = function () {
 			this.label.line = line;
 			this.hideLabel();
 		}
-		
 		setActive() {
 			this.box.material.emissiveColor = selectedColor;
 			this.selecting = true;
@@ -881,41 +944,35 @@ module.exports = function () {
 			activeTool = this;
 			balloonOrigin = this.position;
 			this.elevateLabel();
-			if (this.effector.effect) Howler.addEffect(this.effector.effect);
+			if (this.effector && this.effector.effect) Howler.addEffect(this.effector.effect);
 		}
-		
 		setInactive() {
 			this.box.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
 			this.active = false;
 			this.hideLabel()
 			balloonOrigin = null;
 		}
-		
 		highlight() {
 			if (!this.active) {
 				this.box.material.emissiveColor = highlightColor;
 				this.showLabel();
 			}
 		}
-		
 		unhighlight() {
 			if (!this.active) {
 				this.box.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
 				this.hideLabel();
 			}
 		}
-		
 		hideLabel() {
 			this.label.plane.visibility = 0;
 			this.label.line.visibility = 0;
 		}
-		
 		elevateLabel() {
 			this.label.plane.visibility = 1;
 			this.label.line.visibility = 0;
 			this.label.plane.position = gfx.movePoint(this.position, new BABYLON.Vector3(0, scalingRod.balloonTotalLength + .02, 0));
 		}
-		
 		showLabel() {
 			this.label.plane.position = this.label.plane.defaultPosition;
 			this.label.plane.lookAt(camera.position);
@@ -923,6 +980,26 @@ module.exports = function () {
 			this.label.plane.visibility = 1;
 			this.label.line.visibility = 1;
 		}
+	}
+	
+	class Toggle extends MenuItemBlock {
+		
+		constructor(pt, title, toggleFunc) {
+
+			super(pt, title);
+			this.toggle = toggleFunc;
+		}
+		
+		setActive() {
+			this.box.material.emissiveColor = selectedColor;
+			this.active = true;
+		}
+		// setInactive() {
+		// 	this.box.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
+		// 	this.active = false;
+		// 	this.hideLabel()
+		// 	balloonOrigin = null;
+		// }
 	}
 	
 	class LevelFader {
@@ -980,45 +1057,48 @@ module.exports = function () {
 		}
 		
 		update() {
+			
 			let self = this;
-			
-			let sliderStateVector = gfx.createVector(self.origin, self.box.position);
-			if (sliderStateVector.length > 0) gfx.movePoint(self.dragStart, sliderStateVector);
-			let dragDisplacement = gfx.createVector(self.dragStart, new BABYLON.Vector3(self.dragStart.x, self.dragStart.y, rightController.devicePosition.z));
-			
-			let minRange = self.origin;
-			let maxRange = gfx.movePoint(self.origin, new BABYLON.Vector3(0, 0, self.range));
-			//if (gfx.createVector(self.box.position, maxRange).length() <= 0) dragDisplacement = new BABYLON.Vector3.Zero(); 
-			
-			if (!testPoint) {
-				testPoint = BABYLON.MeshBuilder.CreateBox('test', {
-					size: .01
-				}, scene);
-				testPoint.position = maxRange;
-				testPoint.material = new BABYLON.StandardMaterial('mat', scene);
-				testPoint.material.emissiveColor = new BABYLON.Color3(0, 1, 0);
-				testPoint.isPickable = false;
+			if (self.dragging) {
+				
+				let sliderStateVector = gfx.createVector(self.origin, self.box.position);
+				if (sliderStateVector.length > 0) gfx.movePoint(self.dragStart, sliderStateVector);
+				let dragDisplacement = gfx.createVector(self.dragStart, new BABYLON.Vector3(self.dragStart.x, self.dragStart.y, rightController.devicePosition.z));
+				
+				let minRange = self.origin;
+				let maxRange = gfx.movePoint(self.origin, new BABYLON.Vector3(0, 0, self.range));
+				//if (gfx.createVector(self.box.position, maxRange).length() <= 0) dragDisplacement = new BABYLON.Vector3.Zero(); 
+				
+				if (!testPoint) {
+					testPoint = BABYLON.MeshBuilder.CreateBox('test', {
+						size: .01
+					}, scene);
+					testPoint.position = maxRange;
+					testPoint.material = new BABYLON.StandardMaterial('mat', scene);
+					testPoint.material.emissiveColor = new BABYLON.Color3(0, 1, 0);
+					testPoint.isPickable = false;
+				}
+				if (!point2) {
+					point2 = testPoint.clone();
+					point2.material = new BABYLON.StandardMaterial('mat', scene);
+					point2.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
+					point2.position = minRange;
+				}
+				
+				if(!dragStartPoint){
+					dragStartPoint = BABYLON.MeshBuilder.CreateBox('test', {
+						size: .01
+					}, scene);
+					dragStartPoint.material = new BABYLON.StandardMaterial('mat', scene);
+					dragStartPoint.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
+				}
+				
+				self.box.position = new BABYLON.Vector3(self.origin.x, self.origin.y, dragDisplacement.z);
+				
+				// if (showVector) showVector.dispose();
+				// showVector = gfx.createLine(rightController.devicePosition, dragDisplacement);
+				// showVector.isPickable = false;
 			}
-			if (!point2) {
-				point2 = testPoint.clone();
-				point2.material = new BABYLON.StandardMaterial('mat', scene);
-				point2.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
-				point2.position = minRange;
-			}
-			
-			if(!dragStartPoint){
-				dragStartPoint = BABYLON.MeshBuilder.CreateBox('test', {
-					size: .01
-				}, scene);
-				dragStartPoint.material = new BABYLON.StandardMaterial('mat', scene);
-				dragStartPoint.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
-			}
-			
-			self.box.position = new BABYLON.Vector3(self.origin.x, self.origin.y, dragDisplacement.z);
-			
-			// if (showVector) showVector.dispose();
-			// showVector = gfx.createLine(rightController.devicePosition, dragDisplacement);
-			// showVector.isPickable = false;
 		}
 	}
 	
