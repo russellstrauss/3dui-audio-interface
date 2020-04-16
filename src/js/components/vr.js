@@ -9,7 +9,7 @@ module.exports = function () {
 	var canvas, engine, scene, camera, vrHelper;
 	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, lastPicked, selectedMesh, intersectedMesh, fader, scalingRod = { balloonTotalLength: .3 }, cursor;
 	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0), zBuffer = .01;
-	var menuItems = [], effectors = [], highlightColor = new BABYLON.Color3(.5, 0, 0), selectedColor = new BABYLON.Color3(1, 0, 0), activeTool, balloonOrigin;
+	var menuItems = [], effectors = [], toggles = [], highlightColor = new BABYLON.Color3(.5, 0, 0), selectedColor = new BABYLON.Color3(1, 0, 0), activeTool, balloonOrigin;
 	var record, records = [], desk, testPoint, showTestPoints = false, showVector, showVector2, showVector3, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 1000, albumCount = 0, vinylStart, maxRecordCount = 1;
 	var tuna;
 	var leftSphereToolTip;
@@ -74,69 +74,97 @@ module.exports = function () {
 				if (record) Howler.volume(value);
 			});
 			
-			// var phaser = new tuna.Phaser({
-			// 	rate: 1.2,                     //0.01 to 8 is a decent range, but higher values are possible
-			// 	depth: 0.3,                    //0 to 1
-			// 	feedback: 0.2,                 //0 to 1+
-			// 	stereoPhase: 30,               //0 to 180
-			// 	baseModulationFrequency: 700,  //500 to 1500
-			// 	bypass: 0
-			// });
-			// let phaserDial = new MenuItemBlock(new BABYLON.Vector3(.2, 1.16, .9), 'Phaser');
-			// phaserDial.effector = new Effector(phaserDial, 0, 1, scalingRod, function(value) {
-			// 	if (record) this.effect.depth = value;
-			// });
-			// phaserDial.effector.effect = phaser;
+			let toggleBaseLocation = new BABYLON.Vector3(.24, 1.16, .9);
+			let toggleSpacing = .07;
+			let phaserOptions = {
+				rate: {
+					min: .01,
+					max: 8,
+					displayName: 'Rate'
+				},
+				depth: {
+					min: 0,
+					max: 1,
+					displayName: 'Depth'
+				},
+				feedback: {
+					min: 0,
+					max: 1,
+					displayName: 'Feedback'
+				},
+				stereoPhase: {
+					min: 0,
+					max: 180,
+					displayName: 'Stereo Phase'
+				},
+				baseModulationFrequency: {
+					min: 500,
+					max: 1500,
+					displayName: 'Base Modulation'
+				},
+				tunaOptions: {
+					rate: 1.2,                     //0.01 to 8 is a decent range, but higher values are possible
+					depth: 0.3,                    //0 to 1
+					feedback: 0.2,                 //0 to 1+
+					stereoPhase: 30,               //0 to 180
+					baseModulationFrequency: 700,  //500 to 1500
+					bypass: 0
+				}
+			};
+			let phaser = new tuna.Phaser(phaserOptions.tunaOptions);
+			let phaserToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Phaser', phaser, phaserOptions);
+
+			let overdriveOptions = {
+				drive: {
+					min: 0,
+					max: 1,
+					displayName: 'Drive'
+				},
+				curveAmount: {
+					min: 0,
+					max: 1,
+					displayName: 'Curve Amount'
+				},
+				// algorithmIndex: {
+				// 	min: 0,
+				// 	max: 5,
+				// 	displayName: 'Algorithm Index'
+				// },
+				tunaOptions: {
+					outputGain: -20,           //-42 to 0 in dB
+					drive: 0.7,              //0 to 1
+					curveAmount: 1,          //0 to 1
+					algorithmIndex: 1,       //0 to 5, selects one of our drive algorithms
+					bypass: 0
+				}
+			};
+			let overdrive = new tuna.Overdrive(overdriveOptions.tunaOptions);
+			let overdriveToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Overdrive', overdrive, overdriveOptions);
 			
-			// var overdrive = new tuna.Overdrive({
-			// 	outputGain: -20,           //-42 to 0 in dB
-			// 	drive: 0.7,              //0 to 1
-			// 	curveAmount: 1,          //0 to 1
-			// 	algorithmIndex: 0,       //0 to 5, selects one of our drive algorithms
-			// 	bypass: 0
-			// });
-			// let overdriveDial = new MenuItemBlock(new BABYLON.Vector3(.28, 1.16, .9), 'Overdrive');
-			// overdriveDial.effector = new Effector(overdriveDial, 0, 1, scalingRod, function(value) {
-			// 	if (record) this.effect.drive = value;
-			// });
-			// overdriveDial.effector.effect = overdrive;
-			
-			// var wahwah = new tuna.WahWah({
-			// 	automode: true,                //true/false
-			// 	baseFrequency: 0.5,            //0 to 1
-			// 	excursionOctaves: 2,           //1 to 6
-			// 	sweep: 0.2,                    //0 to 1
-			// 	resonance: 10,                 //1 to 100
-			// 	sensitivity: 0.5,              //-1 to 1
-			// 	bypass: 0
-			// });
-			// let wahwahDial = new MenuItemBlock(new BABYLON.Vector3(.36, 1.16, .9), 'Wahwah');
-			// wahwahDial.effector = new Effector(wahwahDial, 0, 100, scalingRod, function(value) {
-			// 	if (record) this.effect.resonance = value;
-			// });
-			// wahwahDial.effector.effect = wahwah;
-			
-			// var bitcrusher = new tuna.Bitcrusher({
-			// 	bits: 4,          //1 to 16
-			// 	normfreq: 0.1,    //0 to 1
-			// 	bufferSize: 4096  //256 to 16384
-			// });
-			// let bitcrusherDial = new MenuItemBlock(new BABYLON.Vector3(.44, 1.16, .9), 'Bitcrusher');
-			// bitcrusherDial.effector = new Effector(bitcrusherDial, 0, 1, scalingRod, function(value) {
-			// 	if (record) this.effect.normfreq = value;
-			// });
-			// bitcrusherDial.effector.effect = bitcrusher;
-			
-			// var moog = new tuna.MoogFilter({
-			// 	cutoff: 0.065,    //0 to 1
-			// 	resonance: 3.5,   //0 to 4
-			// 	bufferSize: 4096  //256 to 16384
-			// });
-			// let moogDial = new MenuItemBlock(new BABYLON.Vector3(.52, 1.16, .9), 'Moog');
-			// moogDial.effector = new Effector(moogDial, 0, 4, scalingRod, function(value) {
-			// 	if (record) this.effect.resonance = value;
-			// });
-			// moogDial.effector.effect = moog;
+			let moogOptions = {
+				cutoff: {
+					min: 0,
+					max: 1,
+					displayName: 'Cutoff'
+				},
+				resonance: {
+					min: 0,
+					max: 4,
+					displayName: 'Resonance'
+				},
+				bufferSize: {
+					min: 256,
+					max: 16384,
+					displayName: 'Buffer Size'
+				},
+				tunaOptions: {
+					cutoff: 0.065,    //0 to 1
+					resonance: 3.5,   //0 to 4
+					bufferSize: 4096  //256 to 16384
+				}
+			};
+			let moog = new tuna.MoogFilter(moogOptions.tunaOptions);
+			let moogToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Moog', moog, moogOptions);
 			
 			let bitcrusherOptions = {
 				bits: {
@@ -161,7 +189,7 @@ module.exports = function () {
 				}
 			};
 			let bitcrusher = new tuna.Bitcrusher(bitcrusherOptions.tunaOptions);
-			let bitcrusherToggle = new Toggle(new BABYLON.Vector3(.24, 1.16, .7), 'Bitcrusher', bitcrusher, bitcrusherOptions);
+			let bitcrusherToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Bitcrusher', bitcrusher, bitcrusherOptions);
 			
 			let wahwahOptions = {
 				baseFrequency: {
@@ -200,7 +228,7 @@ module.exports = function () {
 				}
 			};
 			let wahwah = new tuna.WahWah(wahwahOptions.tunaOptions);
-			let wahwahToggle = new Toggle(new BABYLON.Vector3(.24, 1.16, .75), 'Wahwah', wahwah, wahwahOptions);
+			let wahwahToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Wahwah', wahwah, wahwahOptions);
 		},
 		
 		everyFrame: function() {
@@ -1028,11 +1056,13 @@ module.exports = function () {
 			this.label.plane.position = gfx.movePoint(this.position, new BABYLON.Vector3(0, scalingRod.balloonTotalLength + .02, 0));
 		}
 		showLabel() {
-			this.label.plane.position = this.label.plane.defaultPosition;
-			this.label.plane.lookAt(camera.position);
-			this.label.plane.addRotation(0, Math.PI, 0);
-			this.label.plane.visibility = 1;
-			this.label.line.visibility = 1;
+			if (this.box.visibility > 0) {
+				this.label.plane.position = this.label.plane.defaultPosition;
+				this.label.plane.lookAt(camera.position);
+				this.label.plane.addRotation(0, Math.PI, 0);
+				this.label.plane.visibility = 1;
+				this.label.line.visibility = 1;
+			}
 		}
 	}
 	
@@ -1045,13 +1075,14 @@ module.exports = function () {
 			self.effectorDials = [];
 			self.effect = effect;
 			self.effectOptions = effectOptions;
+			toggles.push(self);
 			
 			Object.entries(self.effectOptions).forEach(function(item, index) {
 				let attribute = item[0];
 				if (attribute === 'tunaOptions') return;
 				let spacing = .06;
 				let location = gfx.movePoint(pt, new BABYLON.Vector3(1, 0, 0).scale(index * spacing + .1));
-				let effectorDial = new MenuItemBlock(location, attribute);
+				let effectorDial = new MenuItemBlock(location, effectOptions[attribute].displayName);
 				effectorDial.effector = new Effector(effectorDial, effectOptions[attribute].min, effectOptions[attribute].max, scalingRod, function(value) {
 					if (record) self.effect[attribute] = value;
 				});
