@@ -9,9 +9,9 @@ module.exports = function () {
 	var canvas, engine, scene, camera, vrHelper;
 	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, lastPicked, selectedMesh, fader, scalingRod = {};
 	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0), zBuffer = .01;
-	var menuItems = [], highlightColor = new BABYLON.Color3(.5, 0, 0), selectedColor = new BABYLON.Color3(1, 0, 0), activeTool, masterVolume, balloonOrigin;
+	var menuItems = [], effectors = [], highlightColor = new BABYLON.Color3(.5, 0, 0), selectedColor = new BABYLON.Color3(1, 0, 0), activeTool, balloonOrigin;
 	var record, records = [], desk, testPoint, showTestPoints = false, showVector, showVector2, showVector3, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 1000, albumCount = 0, vinylStart, maxRecordCount = 1;
-	var tuna, chorus;
+	var tuna;
 	var leftSphereToolTip;
 	var rightSphereToolTip;
 	var beginTurning = false;
@@ -45,38 +45,60 @@ module.exports = function () {
 		createScene: function () {
 
 			let self = this;
-
+			
 			scene = new BABYLON.Scene(engine);
-			scene.ambientColor = new BABYLON.Color3(1, 0, 0);
-			camera = new BABYLON.ArcRotateCamera('Camera', -Math.PI / 2, Math.PI / 2, 12, BABYLON.Vector3.Zero(), scene);
-			camera.speed = 1;
-			camera.position = new BABYLON.Vector3(0, 1.5, -.5);
-			if (utils.desktop()) camera.position = new BABYLON.Vector3(0, 1.5, -1.25);
-			camera.attachControl(canvas, true);
-
+			scene.clearColor = new BABYLON.Color3(0, 0, 0);
+			
 			vrHelper = scene.createDefaultVRExperience();
 			vrHelper.onEnteringVRObservable.add(function () {
 				self.addButtonEvents();
 			});
+
+			camera = new BABYLON.ArcRotateCamera('Camera', -Math.PI / 2, Math.PI / 2, 12, BABYLON.Vector3.Zero(), scene);
+			camera.position = new BABYLON.Vector3(0, 1.5, -2);
+			camera.attachControl(canvas, true);
+
 			self.setLighting();
 			self.addDesk();
 			self.loadAssets();
+			self.addEffects();
 			self.addDebugButtons();
 			
-			masterVolume = new MenuItemBlock(new BABYLON.Vector3(.12, 1.07, .15), 'Master Volume', menuItems, scene);
-			masterVolume.effector = new Effector(masterVolume, 0, 1, scalingRod, function(value) {
-				
-				if (record && typeof value === 'number') Howler.volume(value);
+			return scene;
+		},
+		
+		addEffects: function() {
+			
+			let masterVolumeDial = new MenuItemBlock(new BABYLON.Vector3(.12, 1.16, .9), 'Master Volume');
+			masterVolumeDial.effector = new Effector(masterVolumeDial, 0, 1, scalingRod, function(value) {
+				if (record) Howler.volume(value);
 			});
 			
-			scene.clearColor = new BABYLON.Color3(0, 0, 0);
-			return scene;
+			var phaser = new tuna.Phaser({
+				rate: 1.2,                     //0.01 to 8 is a decent range, but higher values are possible
+				depth: 0.3,                    //0 to 1
+				feedback: 0.2,                 //0 to 1+
+				stereoPhase: 30,               //0 to 180
+				baseModulationFrequency: 700,  //500 to 1500
+				bypass: 0
+			});
+			let phaserDial = new MenuItemBlock(new BABYLON.Vector3(.2, 1.16, .9), 'Phaser');
+			phaserDial.effector = new Effector(phaserDial, 0, 1, scalingRod, function(value) {
+				if (record) phaser.depth = value;
+			});
+			
+			Howler.addEffect(phaser);
 		},
 		
 		everyFrame: function() {
 			
 			let self = this;
 			if (rightController && leftController) {
+				
+				console.log(vrHelper.webVRCamera.position)
+				//if (!vrHelper.webVROptions._webVRsupported)
+				
+				vrHelper.webVROptions.defaultHeight = 2;
 				
 				if (record && desk.vinylPosition && record.inHand) {
 					record.transformNode.position = leftController.devicePosition.add(leftController.getForwardRay(1).direction.scale(.25));
@@ -121,7 +143,10 @@ module.exports = function () {
 		},
 		
 		updateEffectors: function() {
-			masterVolume.effector.update();
+			
+			effectors.forEach(function(effector) {
+				effector.update();
+			});
 		},
 		
 		updateBalloon: function() {
@@ -245,8 +270,6 @@ module.exports = function () {
 			if (vinylStart) vinylStart.play();
 			record.spinning = true;
 			
-			Howler.addEffect(chorus);
-			
 			setTimeout(function() {
 				record.audio.soundID = record.audio.play();
 			}, 500);
@@ -268,15 +291,23 @@ module.exports = function () {
 			BABYLON.OBJFileLoader.MATERIAL_LOADING_FAILS_SILENTLY = false;
 			desk = new BABYLON.TransformNode();
 			BABYLON.OBJFileLoader.OPTIMIZE_WITH_UV = true;
-			BABYLON.SceneLoader.ImportMesh('', './src/obj/', 'AudioEquipmentTexture.gltf', scene, function (meshChildren) {
+			BABYLON.SceneLoader.ImportMesh('', './src/obj/', 'AudioEquipmentTuned.gltf', scene, function (meshChildren) {
 
 				for (let i = 0; i < meshChildren.length; i++) {
 					meshChildren[i].parent = desk;
 				}
-				desk.position.x = 0, desk.position.y = .1, desk.position.z = 0;
-				desk.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
-				desk.scaling = new BABYLON.Vector3(.05, .05, .05);
-				desk.vinylPosition = new BABYLON.Vector3(-.42, 1.1, .005);
+				desk.position = new BABYLON.Vector3(0, .2, .75);
+				desk.scaling = new BABYLON.Vector3(-.05, -.05, -.05);
+				desk.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
+				desk.vinylPosition = new BABYLON.Vector3(-.245, 1.165, .76);
+				
+				testPoint = BABYLON.MeshBuilder.CreateBox('test', {
+					size: .01
+				}, scene);
+				testPoint.position = desk.vinylPosition;
+				testPoint.material = new BABYLON.StandardMaterial('mat', scene);
+				testPoint.material.emissiveColor = new BABYLON.Color3(0, 1, 0);
+				testPoint.isPickable = false;
 				
 				var test = new LevelFader(new BABYLON.Vector3(.185, 1.08, -.09), .14);
 			});
@@ -311,7 +342,7 @@ module.exports = function () {
 			self.deactivateTeleportation();
 			vrHelper.teleportationTarget = BABYLON.Mesh.CreateSphere('ground', 4, 0.05, scene);
 			vrHelper._teleportBackwardsVector = new BABYLON.Vector3(0, -.1, -.1);
-			//console.log('vrHelper: ', vrHelper);
+			console.log('vrHelper: ', vrHelper);
 			
 			vrHelper.onNewMeshPicked.add(function(pickingInfo) { // where controller is resting/pointing, fired upon new target
 				picked = pickingInfo.pickedMesh;
@@ -469,7 +500,7 @@ module.exports = function () {
 				fader.highlight();
 			}
 				
-			if (selectedMesh != null && picked.getParent && picked.getParent() instanceof MenuItemBlock) selectedMesh.getParent().setActive();
+			if (selectedMesh != null && selectedMesh.getParent && selectedMesh.getParent() instanceof MenuItemBlock) selectedMesh.getParent().setActive();
 		},
 		rightTriggerRelease: function() {
 			if (fader) fader.endDrag();
@@ -541,16 +572,11 @@ module.exports = function () {
 			});
 
 			tuna = new Tuna(Howler.ctx);
-			chorus = new tuna.Chorus({
-				rate: 1.5,
-				feedback: 0.72,
-				delay: 0.45,
-				bypass: 0
-			});
 			
-			assetsManager.addBinaryFileTask('greenfields', './src/audio/greenfields.mp3').albumCover = './src/img/greenfields.jpg';
-			if (maxRecordCount > 1) assetsManager.addBinaryFileTask('i-feel-for-you', './src/audio/i-feel-for-you.mp3').albumCover = './src/img/chaka-khan.jpg';
-			if (maxRecordCount > 2) assetsManager.addBinaryFileTask('quimey-neuquen', './src/audio/quimey-neuquen.mp3').albumCover = './src/img/quimey-neuquen.jpg';
+			assetsManager.addBinaryFileTask('greenfields', './src/audio/arabesque.mp3').albumCover = './src/img/arabesque.jpg';
+			if (maxRecordCount > 1) assetsManager.addBinaryFileTask('greenfields', './src/audio/greenfields.mp3').albumCover = './src/img/greenfields.jpg';
+			if (maxRecordCount > 2) assetsManager.addBinaryFileTask('i-feel-for-you', './src/audio/i-feel-for-you.mp3').albumCover = './src/img/chaka-khan.jpg';
+			if (maxRecordCount > 3) assetsManager.addBinaryFileTask('quimey-neuquen', './src/audio/quimey-neuquen.mp3').albumCover = './src/img/quimey-neuquen.jpg';
 			assetsManager._tasks.forEach(function(task) {
 				task.onSuccess = function(thisTask) {
 					records.push(new Record(thisTask.url, thisTask.albumCover));
@@ -573,7 +599,6 @@ module.exports = function () {
 				let space = 32;
 				if (event.keyCode === space && record) {
 
-					Howler.addEffect(chorus);
 					self.togglePlay();
 				}
 			});
@@ -673,7 +698,7 @@ module.exports = function () {
 			let audioStreamSamples = self.getAudioSamples(this.audioBuffer);
 			let sampleCount = waveformFidelity;
 			let scale = .25;
-			let baseline = 2;
+			let baseline = 1.75;
 			let samples = [];
 			let waveformLength = 3;
 			let colors = [];
@@ -685,7 +710,7 @@ module.exports = function () {
 				let y = (audioStreamSamples[i] * scale) + baseline;
 				if (y > maxHeight) maxHeight = y;
 				if (y - baseline < minHeight) minHeight = y - baseline;
-				let z = 1;
+				let z = 1.25;
 				point = new BABYLON.Vector3(x, y, z);
 				if (i === 0) timeCursorOrigin = point;
 				colors.push(new BABYLON.Color4(0, 1, 0, 1));
@@ -718,7 +743,7 @@ module.exports = function () {
 
 		addAlbumCover() {
 			albumCount++;
-			let startingPoint = new BABYLON.Vector3(1.5, 1.5, 1);
+			let startingPoint = new BABYLON.Vector3(1.5, 1.25, 1.25);
 			this.albumCoverMesh = BABYLON.Mesh.CreatePlane('albumCover', .25, scene);
 			this.albumCoverMesh.position = gfx.movePoint(startingPoint, new BABYLON.Vector3(-1, 0, 0).scale(.7 * albumCount));
 			this.albumCoverMesh.material = new BABYLON.StandardMaterial('albumCoverMat', scene);
@@ -735,13 +760,14 @@ module.exports = function () {
 			this.min = min;
 			this.max = max;
 			this.menuItem = menuItem;
+			effectors.push(this);
 		}
 		
 		update() {
 			
 			if (this.menuItem.active) {
 				let state = this.min + (this.max - this.min) * this.interpolator.state;
-				this.modifier(state);
+				if (typeof state === 'number') this.modifier(state);
 			}
 		}
 	}
@@ -785,6 +811,7 @@ module.exports = function () {
 			plane.addRotation(0, Math.PI, 0);
 			plane.parent = this.label;
 			line.parent = this.label;
+			this.label.plane = plane;
 			this.hideLabel();
 		}
 		
@@ -824,7 +851,10 @@ module.exports = function () {
 		}
 		
 		showLabel() {
-			if (this.label._children) this.label._children.forEach(function (mesh) {
+			let self = this;
+			if (self.label._children) self.label._children.forEach(function (mesh) {
+				self.label.plane.lookAt(camera.position);
+				self.label.plane.addRotation(0, Math.PI, 0);
 				mesh.visibility = 1;
 			});
 		}
