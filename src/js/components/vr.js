@@ -7,7 +7,7 @@ require('howler-plugin-effect-chain');
 module.exports = function () {
 
 	var canvas, engine, scene, camera, vrHelper;
-	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, lastPicked, selectedMesh, fader, scalingRod = {};
+	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, lastPicked, selectedMesh, fader, scalingRod = { balloonTotalLength: .3 };
 	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0), zBuffer = .01;
 	var menuItems = [], effectors = [], highlightColor = new BABYLON.Color3(.5, 0, 0), selectedColor = new BABYLON.Color3(1, 0, 0), activeTool, balloonOrigin;
 	var record, records = [], desk, testPoint, showTestPoints = false, showVector, showVector2, showVector3, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 1000, albumCount = 0, vinylStart, maxRecordCount = 1;
@@ -95,9 +95,6 @@ module.exports = function () {
 			let self = this;
 			if (rightController && leftController) {
 				
-				console.log(vrHelper.webVRCamera.position)
-				//if (!vrHelper.webVROptions._webVRsupported)
-				
 				vrHelper.webVROptions.defaultHeight = 2;
 				
 				if (record && desk.vinylPosition && record.inHand) {
@@ -159,7 +156,6 @@ module.exports = function () {
 				let minimumOffset = 1.6;
 				let controllerMidpoint = gfx.getMidpoint(leftController.devicePosition, rightController.devicePosition);
 				
-				scalingRod.balloonTotalLength = .5;
 				scalingRod.controllersVector = gfx.createVector(leftController.devicePosition, rightController.devicePosition);
 				scalingRod.balloonTotalVector = gfx.createVector(rightController.devicePosition, gfx.movePoint(rightController.devicePosition, new BABYLON.Vector3(0, scalingRod.balloonTotalLength, 0)));
 				scalingRod.currentLength = scalingRod.controllersVector.length();
@@ -491,7 +487,7 @@ module.exports = function () {
 		},
 		rightTrigger: function (webVRController, stateObject) {
 			let self = this;
-			if (picked.name === 'albumCover') self.selectRecord(picked);
+			if (picked && picked.name === 'albumCover') self.selectRecord(picked);
 			
 			if (typeof picked.getParent !== 'undefined' && picked.getParent() instanceof LevelFader) {
 				fader = picked.getParent();
@@ -798,20 +794,22 @@ module.exports = function () {
 		initMesh() {
 			let plane = BABYLON.MeshBuilder.CreatePlane('plane', {height: 1, width: 1}, scene);
 			plane.isPickable = false;
-			plane.position = gfx.movePoint(this.position, new BABYLON.Vector3(0, this.boxSize + .08, 0));
+			plane.defaultPosition = gfx.movePoint(this.position, new BABYLON.Vector3(0, this.boxSize + .08, 0));
+			plane.position = plane.defaultPosition;
 			let line = gfx.createLine(gfx.movePoint(this.position, new BABYLON.Vector3(0, this.boxSize + .01, 0)), new BABYLON.Vector3(0, .05, 0), white);
 			line.isPickable = false;
 			let advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(plane);
 			let label = new BABYLON.GUI.TextBlock();
 			label.text = this.title;
 			label.color = 'white';
-			label.fontSize = 25;
+			label.fontSize = 18;
 			advancedTexture.addControl(label);
 			plane.lookAt(camera.position);
 			plane.addRotation(0, Math.PI, 0);
 			plane.parent = this.label;
 			line.parent = this.label;
-			this.label.plane = plane;
+			this.label.plane = plane
+			this.label.line = line;
 			this.hideLabel();
 		}
 		
@@ -821,12 +819,14 @@ module.exports = function () {
 			this.active = true;
 			activeTool = this;
 			balloonOrigin = this.position;
-			this.hideLabel();
+			console.log('set active');
+			this.elevateLabel();
 		}
 		
 		setInactive() {
 			this.box.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
 			this.active = false;
+			this.hideLabel()
 			balloonOrigin = null;
 		}
 		
@@ -845,18 +845,25 @@ module.exports = function () {
 		}
 		
 		hideLabel() {
-			this.label._children.forEach(function (mesh) {
-				mesh.visibility = 0;
-			});
+			this.label.plane.visibility = 0;
+			this.label.line.visibility = 0;
+		}
+		
+		elevateLabel() {
+			this.label.plane.visibility = 1;
+			this.label.line.visibility = 0;
+			console.log('init p', this.position);
+			this.label.plane.position = gfx.movePoint(this.position, new BABYLON.Vector3(0, scalingRod.balloonTotalLength + .02, 0));
+			console.log('elevated p', this.label.plane.position);
+			console.log('plane: ', this.label.plane);
 		}
 		
 		showLabel() {
-			let self = this;
-			if (self.label._children) self.label._children.forEach(function (mesh) {
-				self.label.plane.lookAt(camera.position);
-				self.label.plane.addRotation(0, Math.PI, 0);
-				mesh.visibility = 1;
-			});
+			this.label.plane.position = this.label.plane.defaultPosition;
+			this.label.plane.lookAt(camera.position);
+			this.label.plane.addRotation(0, Math.PI, 0);
+			this.label.plane.visibility = 1;
+			this.label.line.visibility = 1;
 		}
 	}
 	
