@@ -89,7 +89,7 @@ module.exports = function () {
 			phaserDial.effector.effect = phaser;
 			
 			var overdrive = new tuna.Overdrive({
-				outputGain: 0,           //-42 to 0 in dB
+				outputGain: -20,           //-42 to 0 in dB
 				drive: 0.7,              //0 to 1
 				curveAmount: 1,          //0 to 1
 				algorithmIndex: 0,       //0 to 5, selects one of our drive algorithms
