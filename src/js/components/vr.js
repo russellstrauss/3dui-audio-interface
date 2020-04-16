@@ -174,12 +174,22 @@ module.exports = function () {
 
 					var changeInPlayback = self.calculatePlaybackRate(leftStarterPosition.clone(), leftControllerPosition.clone());
 
-					if (changeInPlayback != 0) {
+					if (!isNaN(changeInPlayback) && changeInPlayback) {
 						intersectedRecord.playbackRate += changeInPlayback;
-						//console.log(intersectedRecord.playbackRate);
-						if (intersectedRecord.playing) {
-							//changePlayback Rate of the music based on what is in the record
+
+						if(intersectedRecord.playbackRate <= 0.5) {
+							intersectedRecord.playbackRate = 0.5;
+						} else if (intersectedRecord.playbackRate >= 2.0) {
+							intersectedRecord.playbackRate = 2.0;
 						}
+
+						//console.log(intersectedRecord.playbackRate);
+						// if (intersectedRecord.playing) {
+							//changePlayback Rate of the music based on what is in the record
+						// }
+
+						intersectedRecord.audio.rate(intersectedRecord.playbackRate, intersectedRecord.audio.soundID);
+
 						leftStarterPosition = leftControllerPosition.clone();
 
 						//beginTurning = false;
