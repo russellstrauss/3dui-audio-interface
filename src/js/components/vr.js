@@ -170,8 +170,7 @@ module.exports = function () {
 					bypass: 0
 				}
 			};
-			var wahwah = new tuna.WahWah(wahwahOptions.tunaOptions);
-			console.log(wahwah);
+			let wahwah = new tuna.WahWah(wahwahOptions.tunaOptions);
 			let wahwahToggle = new Toggle(new BABYLON.Vector3(.24, 1.16, .75), 'Wahwah', wahwah, wahwahOptions);
 		},
 		
@@ -614,7 +613,7 @@ module.exports = function () {
 			if (picked) self.selectRecord(picked);
 			
 			if (self.parentInstanceOf(intersectedMesh, Toggle)) intersectedMesh.getParent().toggleState();
-			if (intersectedMesh && self.parentInstanceOf(intersectedMesh, MenuItemBlock)) intersectedMesh.getParent().setActive();
+			else if (intersectedMesh && self.parentInstanceOf(intersectedMesh, MenuItemBlock)) intersectedMesh.getParent().setActive();
 		},
 		
 		parentInstanceOf: function(object, myClass) {
@@ -957,6 +956,13 @@ module.exports = function () {
 			this.label.line = line;
 			this.hideLabel();
 		}
+		hide() {
+			this.box.visibility = 0;
+			this.hideLabel();
+		}
+		show() {
+			this.box.visibility = 1;
+		}
 		setActive() {
 			this.box.material.emissiveColor = selectedColor;
 			this.selecting = true;
@@ -964,7 +970,6 @@ module.exports = function () {
 			activeTool = this;
 			balloonOrigin = this.position;
 			this.elevateLabel();
-			if (this.effector && this.effector.effect) Howler.addEffect(this.effector.effect);
 		}
 		setInactive() {
 			this.box.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
@@ -1008,14 +1013,13 @@ module.exports = function () {
 			
 			super(pt, title);
 			let self = this;
-			self.effectors = [];
+			self.effectorDials = [];
 			self.effect = effect;
 			self.effectOptions = effectOptions;
 			
 			Object.entries(self.effectOptions).forEach(function(item, index) {
 				let attribute = item[0];
 				if (attribute === 'tunaOptions') return;
-				console.log(item[0]);
 				let spacing = .06;
 				let location = gfx.movePoint(pt, new BABYLON.Vector3(1, 0, 0).scale(index * spacing + .1));
 				let effectorDial = new MenuItemBlock(location, attribute);
@@ -1023,24 +1027,38 @@ module.exports = function () {
 					if (record) self.effect[attribute] = value;
 				});
 				effectorDial.effector.effect = self.effect;
-				self.effectors.push(effectorDial.effector);
+				self.effectorDials.push(effectorDial);
 			});
+			self.hideChildren();
 		}
 		
+		hideChildren() {
+			this.effectorDials.forEach(function(dial) {
+				dial.hide();
+			});
+		}
+		showChildren() {
+			this.effectorDials.forEach(function(dial) {
+				dial.show();
+			});
+		}
 		toggleState() {
 			if (this.active) this.setInactive();
-			if (!this.active) this.setActive();
+			else if (!this.active) this.setActive();
 		}
 		setActive() {
 			this.box.material.emissiveColor = selectedColor;
 			this.active = true;
+			this.showChildren();
+			if (this.effect) Howler.addEffect(this.effect);
 		}
 		setInactive() {
-			
 			this.box.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
 			this.active = false;
 			balloonOrigin = null;
 			if (intersectedMesh !== this.box) this.hideLabel();
+			this.hideChildren();
+			if (this.effect) Howler.removeEffect(this.effect);
 		}
 		highlight() {
 			super.highlight();
