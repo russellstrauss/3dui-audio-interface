@@ -621,6 +621,7 @@ module.exports = function () {
 			let assetsManager = new BABYLON.AssetsManager(scene);
 			vinylStart = new Howl({
 				src: ['./src/audio/vinyl-start.wav'],
+				html5: true,
 				preload: true,
 				autoplay: false,
 				onload: function () { }
@@ -688,6 +689,7 @@ module.exports = function () {
 			});
 			this.audio = new Howl({
 				src: [self.audioPath],
+				html5: true,
 				preload: true,
 				autoplay: false,
 				onload: function () {
