@@ -21,8 +21,8 @@ module.exports = function () {
 	var beginTurningTurnedOn = false;
 	//var turningToolTip = BABYLON.Mesh.CreateLines("toolTip", [new BABYLON.Vector3(0,0,0), new BABYLON.Vector3(1,0,0)], scene, true);
 	var tubeToolTip; // = BABYLON.MeshBuilder.CreateTube("tube", {path: [new BABYLON.Vector3(0,0,0), new BABYLON.Vector3(1,0,0)], radius: 0.1, updatable: true, cap: BABYLON.Mesh.CAP_ALL}, scene);
-	
-	
+
+
 	var dragStartPoint, point2;
 
 	let methods = {
@@ -49,10 +49,10 @@ module.exports = function () {
 		createScene: function () {
 
 			let self = this;
-			
+
 			scene = new BABYLON.Scene(engine);
 			scene.clearColor = new BABYLON.Color3(0, 0, 0);
-			
+
 			vrHelper = scene.createDefaultVRExperience();
 			vrHelper.onEnteringVRObservable.add(function () {
 				self.addButtonEvents();
@@ -61,24 +61,24 @@ module.exports = function () {
 			camera = new BABYLON.ArcRotateCamera('Camera', -Math.PI / 2, Math.PI / 2, 12, BABYLON.Vector3.Zero(), scene);
 			camera.position = new BABYLON.Vector3(0, 1.5, -2);
 			camera.attachControl(canvas, true);
-			
+
 			self.setLighting();
 			self.addDesk();
 			self.addCursor();
 			self.loadAssets();
 			self.addEffects();
 			self.addDebugButtons();
-			
+
 			return scene;
 		},
-		
-		addEffects: function() {
-			
+
+		addEffects: function () {
+
 			let masterVolumeDial = new MenuItemBlock(new BABYLON.Vector3(.12, 1.16, .9), 'Master Volume');
-			masterVolumeDial.effector = new Effector(masterVolumeDial, 0, 1, scalingRod, function(value) {
+			masterVolumeDial.effector = new Effector(masterVolumeDial, 0, 1, scalingRod, function (value) {
 				if (record) Howler.volume(value);
 			});
-			
+
 			let toggleBaseLocation = new BABYLON.Vector3(.24, 1.16, .9);
 			let toggleSpacing = .05;
 			// let phaserOptions = {
@@ -140,7 +140,7 @@ module.exports = function () {
 			// };
 			// let overdrive = new tuna.Overdrive(overdriveOptions.tunaOptions);
 			// let overdriveToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Overdrive', overdrive, overdriveOptions);
-			
+
 			let moogOptions = {
 				cutoff: {
 					min: .05,
@@ -159,8 +159,8 @@ module.exports = function () {
 				}
 			};
 			let moog = new tuna.MoogFilter(moogOptions.tunaOptions);
-			let moogToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Moog', moog, moogOptions);
-			
+			let moogToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing * toggles.length)), 'Moog', moog, moogOptions);
+
 			let bitcrusherOptions = {
 				bits: {
 					min: 1,
@@ -179,8 +179,8 @@ module.exports = function () {
 				}
 			};
 			let bitcrusher = new tuna.Bitcrusher(bitcrusherOptions.tunaOptions);
-			let bitcrusherToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Bitcrusher', bitcrusher, bitcrusherOptions);
-			
+			let bitcrusherToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing * toggles.length)), 'Bitcrusher', bitcrusher, bitcrusherOptions);
+
 			// let wahwahOptions = {
 			// 	baseFrequency: {
 			// 		min: 0,
@@ -219,7 +219,7 @@ module.exports = function () {
 			// };
 			// let wahwah = new tuna.WahWah(wahwahOptions.tunaOptions);
 			// let wahwahToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Wahwah', wahwah, wahwahOptions);
-			
+
 			let chorusOptions = {
 
 				feedback: {
@@ -240,9 +240,9 @@ module.exports = function () {
 				}
 			};
 			let chorus = new tuna.Chorus(chorusOptions.tunaOptions);
-			let chorusToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Chorus', chorus, chorusOptions);
-			
-			let delayOptions = { 
+			let chorusToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing * toggles.length)), 'Chorus', chorus, chorusOptions);
+
+			let delayOptions = {
 				delayTime: {
 					min: 1,
 					max: 1000,
@@ -273,8 +273,8 @@ module.exports = function () {
 				}
 			};
 			let delay = new tuna.Delay(delayOptions.tunaOptions);
-			let delayToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Delay', delay, delayOptions);
-			
+			let delayToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing * toggles.length)), 'Delay', delay, delayOptions);
+
 			// let tremoloOptions = {
 			// 	intensity: {
 			// 		min: 0,
@@ -300,7 +300,7 @@ module.exports = function () {
 			// };
 			// let tremolo = new tuna.Tremolo(tremoloOptions.tunaOptions);
 			// let tremoloToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Tremolo', tremolo, tremoloOptions);
-			
+
 			// let filterTypes = ['lowpass', 'highpass', 'bandpass', 'lowshelf', 'highshelf', 'peaking', 'notch', 'allpass'];
 			// let filterOptions = {
 			// 	intensity: {
@@ -328,39 +328,39 @@ module.exports = function () {
 			// };
 			// let filter = new tuna.Filter(filterOptions.tunaOptions);
 			// let filterToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Filter', filter, filterOptions);
-			
-			
+
+
 			// let filterCountSwitch = 0;
 			// let filterDial = new MenuItemBlock(new BABYLON.Vector3(.12, 1.16, .8), 'Filter');
 			// filterDial.effector = new Effector(filterDial, 0, 1, scalingRod, function(value) {
 			// 	if (record) filter.filterType = filterTypes[filterCountSwitch%filterTypes.length];
 			// });
 		},
-		
-		everyFrame: function() {
-			
+
+		everyFrame: function () {
+
 			let self = this;
 			if (rightController && leftController) {
-				
+
 				self.updateCursor();
 				self.updateBalloon();
 				self.updateEffectors();
 				self.updatePhysicalRecord()
 			}
 			if (record && record.playing) self.updateRecordProgress();
-			
+
 
 			if (beginTurning) {
 				beginTurningTurnedOn = true;
 				if (intersectedRecord) {
-					
+
 
 					var changeInPlayback = self.calculatePlaybackRate(leftStarterPosition.clone(), leftControllerPosition.clone());
 
 					if (!isNaN(changeInPlayback) && changeInPlayback) {
 						intersectedRecord.playbackRate += changeInPlayback;
 
-						if(intersectedRecord.playbackRate <= 0.5) {
+						if (intersectedRecord.playbackRate <= 0.5) {
 							intersectedRecord.playbackRate = 0.5;
 						} else if (intersectedRecord.playbackRate >= 2.0) {
 							intersectedRecord.playbackRate = 2.0;
@@ -368,7 +368,7 @@ module.exports = function () {
 
 						//console.log(intersectedRecord.playbackRate);
 						// if (intersectedRecord.playing) {
-							//changePlayback Rate of the music based on what is in the record
+						//changePlayback Rate of the music based on what is in the record
 						// }
 
 						intersectedRecord.audio.rate(intersectedRecord.playbackRate, intersectedRecord.audio.soundID);
@@ -379,21 +379,21 @@ module.exports = function () {
 						//beginTurning = false;
 					}
 				}
-			} else if(beginTurningTurnedOn && !beginTurning) {
-				
+			} else if (beginTurningTurnedOn && !beginTurning) {
+
 				tubeToolTip.isVisible = false;
 			}
 		},
-		
-		updatePhysicalRecord: function() {
+
+		updatePhysicalRecord: function () {
 			let self = this;
 			if (record && desk.vinylPosition && record.inHand) {
 				record.transformNode.position = leftController.devicePosition.add(leftController.getForwardRay(1).direction.scale(.25));
 				if (gfx.createVector(record.transformNode.position, desk.vinylPosition).length() < .02) self.startRecord(record);
 			}
 		},
-		
-		updateRecordProgress: function() {
+
+		updateRecordProgress: function () {
 			if (record.spinning) record.transformNode.rotate(BABYLON.Axis.Y, .005 * record.audio.rate(), BABYLON.Space.WORLD);
 			if (timeCursor && record.progress < 1) {
 				timeCursor.position = gfx.createVector(record.timeCursorOrigin, record.timeCursorFinal).scale(record.progress);
@@ -402,24 +402,24 @@ module.exports = function () {
 				record.progress = record.audio.seek() / record.audio.duration();
 			}
 		},
-		
-		updateEffectors: function() {
-			
-			effectors.forEach(function(effector) {
+
+		updateEffectors: function () {
+
+			effectors.forEach(function (effector) {
 				effector.update();
 			});
 		},
-		
-		updateBalloon: function() {
+
+		updateBalloon: function () {
 			if (balloonOrigin) {
-				
+
 				if (!scalingRod.initialLength) {
 					scalingRod.scalingState = true;
 					scalingRod.initialLength = gfx.createVector(leftController.devicePosition, rightController.devicePosition).length();
 				}
 				let minimumOffset = 1.6;
 				let controllerMidpoint = gfx.getMidpoint(leftController.devicePosition, rightController.devicePosition);
-				
+
 				scalingRod.controllersVector = gfx.createVector(leftController.devicePosition, rightController.devicePosition);
 				scalingRod.balloonTotalVector = gfx.createVector(rightController.devicePosition, gfx.movePoint(rightController.devicePosition, new BABYLON.Vector3(0, scalingRod.balloonTotalLength, 0)));
 				scalingRod.currentLength = scalingRod.controllersVector.length();
@@ -427,7 +427,7 @@ module.exports = function () {
 				if (balloonLength < 0) balloonLength = 0;
 				scalingRod.balloonVector = gfx.createVector(balloonOrigin, gfx.movePoint(balloonOrigin, new BABYLON.Vector3(0, 1, 0).scale(balloonLength))).scale(minimumOffset);
 				if (scalingRod.balloonVector.length() > scalingRod.balloonTotalLength) scalingRod.balloonVector = scalingRod.balloonVector.normalize().scale(scalingRod.balloonTotalLength);
-				
+
 				if (scalingRod.balloonPositionIndicatorMesh) scalingRod.balloonPositionIndicatorMesh.dispose();
 				scalingRod.balloonPositionIndicatorMesh = BABYLON.MeshBuilder.CreateBox('balloon', { size: .01 }, scene);
 				scalingRod.balloonPositionIndicatorMesh.isPickable = false;
@@ -437,7 +437,7 @@ module.exports = function () {
 					scalingRod.balloonPositionIndicatorMesh.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
 					scalingRod.balloonPositionIndicatorMesh.material.alpha = 0.3;
 				}
-				
+
 				// show progress indicators
 				if (scalingRod.balloonTotalVectorMesh) scalingRod.balloonTotalVectorMesh.dispose();
 				scalingRod.balloonTotalVectorMesh = gfx.createLine(balloonOrigin, scalingRod.balloonTotalVector, new BABYLON.Color3(1, 1, 1), .5);
@@ -453,8 +453,8 @@ module.exports = function () {
 				if (scalingRod.balloonVectorMesh) scalingRod.balloonVectorMesh.dispose();
 			}
 		},
-		
-		togglePlay: function() {
+
+		togglePlay: function () {
 			let self = this;
 			if (record.paused) {
 				record.audio.play();
@@ -504,7 +504,7 @@ module.exports = function () {
 			var oldVec = oldPos.subtract(desk.vinylPosition);
 			var newVec = newPos.subtract(desk.vinylPosition);
 
-			
+
 			tubeToolTip.isVisible = true;
 			var u = (oldVec.subtract(up.scale(BABYLON.Vector3.Dot(up, oldVec)))).normalize();
 			var v = (newVec.subtract(up.scale(BABYLON.Vector3.Dot(up, newVec)))).normalize();
@@ -513,12 +513,12 @@ module.exports = function () {
 			newPath.push(desk.vinylPosition);
 			newPath.push(desk.vinylPosition.add(v.scale(0.15)));
 
-			tubeToolTip = new BABYLON.MeshBuilder.CreateTube("TubeTip", {path: newPath, instance: tubeToolTip, radius: 0.02})
+			tubeToolTip = new BABYLON.MeshBuilder.CreateTube("TubeTip", { path: newPath, instance: tubeToolTip, radius: 0.02 })
 
 			var tubeMat = new BABYLON.StandardMaterial('toolTipSphereMat', scene);
 			tubeMat.ambientColor = new BABYLON.Color3(0.3, 0.3, 0.3);
-			tubeMat.diffuseColor = new BABYLON.Color3(1,1,1);
-			tubeMat.emissiveColor = new BABYLON.Color3(0.8,0.8,0.8);
+			tubeMat.diffuseColor = new BABYLON.Color3(1, 1, 1);
+			tubeMat.emissiveColor = new BABYLON.Color3(0.8, 0.8, 0.8);
 
 			tubeToolTip.material = tubeMat;
 
@@ -539,7 +539,7 @@ module.exports = function () {
 			}
 		},
 
-		startRecord: function(record) {
+		startRecord: function (record) {
 			let self = this;
 			record.audio.stop();
 			record.inHand = false;
@@ -548,8 +548,8 @@ module.exports = function () {
 
 			if (vinylStart) vinylStart.play();
 			record.spinning = true;
-			
-			setTimeout(function() {
+
+			setTimeout(function () {
 				record.audio.soundID = record.audio.play();
 			}, 500);
 		},
@@ -581,8 +581,8 @@ module.exports = function () {
 				desk.vinylPosition = new BABYLON.Vector3(-.245, 1.165, .76);
 			});
 		},
-		
-		createToolTips: function(webVRController) {
+
+		createToolTips: function (webVRController) {
 			//console.log('GOT HERE');
 			var pos = webVRController.devicePosition;
 
@@ -591,7 +591,7 @@ module.exports = function () {
 			var sphere = BABYLON.MeshBuilder.CreateSphere('sphere', { diameter: cSize, segments: sSegments }, scene);
 			sphere.position = pos;
 
-			var tube = BABYLON.MeshBuilder.CreateTube("tube", {path: [new BABYLON.Vector3(0,0,0), new BABYLON.Vector3(1,0,0)], radius: 0.015, updatable: true, cap: BABYLON.Mesh.CAP_ALL}, scene);
+			var tube = BABYLON.MeshBuilder.CreateTube("tube", { path: [new BABYLON.Vector3(0, 0, 0), new BABYLON.Vector3(1, 0, 0)], radius: 0.015, updatable: true, cap: BABYLON.Mesh.CAP_ALL }, scene);
 
 			var mat = new BABYLON.StandardMaterial('toolTipSphereMat', scene);
 			mat.diffuseColor = new BABYLON.Color3(1, 0, 1);
@@ -605,14 +605,14 @@ module.exports = function () {
 
 			var mat2 = new BABYLON.StandardMaterial('toolTipSphereMat', scene);
 			mat2.ambientColor = new BABYLON.Color3(0.3, 0.3, 0.3);
-			mat2.diffuseColor = new BABYLON.Color3(1,1,1);
+			mat2.diffuseColor = new BABYLON.Color3(1, 1, 1);
 
 			tubeToolTip = tube;
 			tube.material = mat2;
 
 			leftSphereToolTip = sphere;
 		},
-		
+
 		addButtonEvents: function () {
 
 			let self = this;
@@ -625,12 +625,12 @@ module.exports = function () {
 			vrHelper.teleportationTarget = BABYLON.Mesh.CreateSphere('ground', 4, 0.05, scene);
 			//vrHelper._teleportBackwardsVector = new BABYLON.Vector3(0, -.1, -.1);
 			//console.log('vrHelper: ', vrHelper);
-			
-			vrHelper.onNewMeshPicked.add(function(pickingInfo) { // where controller is resting/pointing, fired upon new target
+
+			vrHelper.onNewMeshPicked.add(function (pickingInfo) { // where controller is resting/pointing, fired upon new target
 				picked = pickingInfo.pickedMesh;
-				
+
 				if (rightController) {
-					
+
 					let isRightControllerPick = gfx.createVector(pickingInfo.ray.origin, rightController.devicePosition).length() < .1;
 					if (isRightControllerPick) lastPicked = picked;
 					else {
@@ -638,9 +638,9 @@ module.exports = function () {
 					}
 				}
 			});
-			
-			vrHelper.onNewMeshSelected.add(function(mesh) { selectedMesh = mesh; });
-			vrHelper.onSelectedMeshUnselected.add(function() { selectedMesh = null; });
+
+			vrHelper.onNewMeshSelected.add(function (mesh) { selectedMesh = mesh; });
+			vrHelper.onSelectedMeshUnselected.add(function () { selectedMesh = null; });
 
 			vrHelper.onControllerMeshLoadedObservable.add(function (webVRController) {
 				if (webVRController.hand === 'left') {
@@ -719,9 +719,9 @@ module.exports = function () {
 				}
 			});
 		},
-		
-		addCursor: function() {
-			
+
+		addCursor: function () {
+
 			let self = this;
 			cursor = BABYLON.MeshBuilder.CreateIcoSphere('cursor', { radius: .02, subdivisions: 2 }, scene);
 			cursor.material = new BABYLON.StandardMaterial('cursorMaterial', scene);
@@ -731,14 +731,14 @@ module.exports = function () {
 			//cursor.material.wireframe = true;
 			cursor.isPickable = false;
 		},
-		
-		updateCursor: function() {
+
+		updateCursor: function () {
 			let self = this;
 			cursor.direction = rightController.getForwardRay(1).direction;
 			cursor.position = rightController.devicePosition.add(rightController.getForwardRay(1).direction.scale(cursor.length));
-			
+
 			let noneIntersected = true;
-			menuItems.forEach(function(menuItem) {
+			menuItems.forEach(function (menuItem) {
 				if (menuItem.box.intersectsMesh(cursor)) {
 					menuItem.highlight();
 					intersectedMesh = menuItem.box;
@@ -798,19 +798,19 @@ module.exports = function () {
 		rightTrigger: function (webVRController, stateObject) {
 			let self = this;
 			if (picked) self.selectRecord(picked);
-			
+
 			if (self.parentInstanceOf(intersectedMesh, Toggle)) intersectedMesh.getParent().toggleState();
 			else if (intersectedMesh && self.parentInstanceOf(intersectedMesh, MenuItemBlock)) intersectedMesh.getParent().setActive();
 		},
-		
-		parentInstanceOf: function(object, myClass) {
+
+		parentInstanceOf: function (object, myClass) {
 			return object && typeof object.getParent !== 'undefined' && object.getParent() instanceof myClass;
 		},
-		
-		rightTriggerRelease: function() {
+
+		rightTriggerRelease: function () {
 			if (activeTool) activeTool.setInactive();
 		},
-		leftSecondaryTrigger: function(webVRController) {
+		leftSecondaryTrigger: function (webVRController) {
 			this.activateTeleportation();
 		},
 		leftSecondaryTriggerRelease: function () {
@@ -849,7 +849,7 @@ module.exports = function () {
 			vrHelper.teleportationEnabled = false;
 			vrHelper._rotationAllowed = false;
 		},
-		
+
 		adjustCursorLength(stateObject) {
 			if (stateObject.y > 0.4 && cursor.length > .1) { // low speed
 				cursor.speed = -.005;
@@ -860,17 +860,17 @@ module.exports = function () {
 				cursor.length += cursor.speed;
 			}
 		},
-		
+
 		unselectMenuItemBlocks: function () {
 			let self = this;
-			menuItems.forEach(function(menuItem) {
+			menuItems.forEach(function (menuItem) {
 				if (!self.parentInstanceOf(menuItem.box, Toggle)) menuItem.setInactive();
 				else if (self.parentInstanceOf(menuItem.box, Toggle)) {
 					menuItem.hideLabel();
 				}
 			});
 		},
-		
+
 		setLighting: function () {
 			let ground = BABYLON.MeshBuilder.CreateGround('ground', { height: 20, width: 20, subdivisions: 4, isPickable: false }, scene);
 			ground.isPickable = false;
@@ -896,20 +896,20 @@ module.exports = function () {
 			tuna = new Tuna(Howler.ctx);
 			StartAudioContext(Howler.ctx);
 			Howler.volume(1);
-			
+
 			//assetsManager.addBinaryFileTask('arabesque', './src/audio/arabesque.mp3').albumCover = './src/img/arabesque.jpg';
 			assetsManager.addBinaryFileTask('quimey-neuquen', './src/audio/quimey-neuquen.mp3').albumCover = './src/img/quimey-neuquen.jpg';
 			//assetsManager.addBinaryFileTask('greenfields', './src/audio/greenfields.mp3').albumCover = './src/img/greenfields.jpg';
 			assetsManager.addBinaryFileTask('i-feel-for-you', './src/audio/i-feel-for-you.mp3').albumCover = './src/img/chaka-khan.jpg';
-			assetsManager._tasks.forEach(function(task) {
-				task.onSuccess = function(thisTask) {
+			assetsManager._tasks.forEach(function (task) {
+				task.onSuccess = function (thisTask) {
 					records.push(new Record(thisTask.url, thisTask.albumCover));
 				};
 			});
 			assetsManager.load();
 		},
-		
-		addDebugButtons: function() {
+
+		addDebugButtons: function () {
 			let self = this;
 			scene.onPointerDown = function (evt, pickResult) { // click for testing on desktop
 				if (pickResult.hit) {
@@ -950,11 +950,11 @@ module.exports = function () {
 				self.addAlbumCover();
 				StartAudioContext(self.babylonAudio._inputAudioNode.context);
 			},
-			{ // sound options
-				loop: false,
-				autoplay: false,
-				useCustomAttenuation: true
-			});
+				{ // sound options
+					loop: false,
+					autoplay: false,
+					useCustomAttenuation: true
+				});
 			this.audio = new Howl({
 				src: [self.audioPath],
 				html5: false,
@@ -981,10 +981,10 @@ module.exports = function () {
 				onend: function () {
 					self.playing = false;
 					self.paused = false;
-					self.spinning = false; 
+					self.spinning = false;
 				}
 			});
-			
+
 			return this;
 		}
 
@@ -1075,9 +1075,9 @@ module.exports = function () {
 			this.albumCoverMesh.material.emissiveTexture = new BABYLON.Texture(this.albumCover, scene);
 		}
 	}
-	
+
 	class Effector {
-		
+
 		constructor(menuItem, min, max, interpolator, modifierFunction) {
 			let self = this;
 			this.modifier = modifierFunction;
@@ -1087,20 +1087,20 @@ module.exports = function () {
 			this.menuItem = menuItem;
 			effectors.push(this);
 		}
-		
+
 		update() {
-			
+
 			if (this.menuItem.active) {
 				let state = this.min + (this.max - this.min) * this.interpolator.state;
 				if (typeof state === 'number') this.modifier(state);
 			}
 		}
 	}
-	
+
 	class MenuItemBlock {
 
 		constructor(pt, title) {
-			
+
 			let self = this;
 			this.position = pt;
 			this.active = false;
@@ -1108,21 +1108,21 @@ module.exports = function () {
 			this.boxSize = .025;
 			this.selecting = false;
 			this.label = new BABYLON.TransformNode();
-			this.box = BABYLON.MeshBuilder.CreateBox('MenuItemBlock', {size: this.boxSize}, scene);
+			this.box = BABYLON.MeshBuilder.CreateBox('MenuItemBlock', { size: this.boxSize }, scene);
 			this.box.isPickable = false;
-			this.box.position = new BABYLON.Vector3(pt.x, pt.y + this.boxSize/2, pt.z);
+			this.box.position = new BABYLON.Vector3(pt.x, pt.y + this.boxSize / 2, pt.z);
 			this.box.material = new BABYLON.StandardMaterial('menuItemMaterial', scene);
 			menuItems.push(this);
-			
+
 			this.initMesh();
-			
-			this.box.getParent = function() {
+
+			this.box.getParent = function () {
 				return self;
 			}
 		}
-		
+
 		initMesh() {
-			let plane = BABYLON.MeshBuilder.CreatePlane('plane', {height: 1, width: 1}, scene);
+			let plane = BABYLON.MeshBuilder.CreatePlane('plane', { height: 1, width: 1 }, scene);
 			plane.isPickable = false;
 			plane.defaultPosition = gfx.movePoint(this.position, new BABYLON.Vector3(0, this.boxSize + .08, 0));
 			plane.position = plane.defaultPosition;
@@ -1197,25 +1197,25 @@ module.exports = function () {
 			}
 		}
 	}
-	
+
 	class Toggle extends MenuItemBlock {
-		
+
 		constructor(pt, title, effect, effectOptions) {
-			
+
 			super(pt, title);
 			let self = this;
 			self.effectorDials = [];
 			self.effect = effect;
 			self.effectOptions = effectOptions;
 			toggles.push(self);
-			
-			Object.entries(self.effectOptions).forEach(function(item, index) {
+
+			Object.entries(self.effectOptions).forEach(function (item, index) {
 				let attribute = item[0];
 				if (attribute === 'tunaOptions') return;
 				let spacing = .06;
 				let location = gfx.movePoint(pt, new BABYLON.Vector3(1, 0, 0).scale(index * spacing + .1));
 				let effectorDial = new MenuItemBlock(location, effectOptions[attribute].displayName);
-				effectorDial.effector = new Effector(effectorDial, effectOptions[attribute].min, effectOptions[attribute].max, scalingRod, function(value) {
+				effectorDial.effector = new Effector(effectorDial, effectOptions[attribute].min, effectOptions[attribute].max, scalingRod, function (value) {
 					if (record) self.effect[attribute] = value;
 				});
 				effectorDial.effector.effect = self.effect;
@@ -1223,14 +1223,14 @@ module.exports = function () {
 			});
 			self.hideChildren();
 		}
-		
+
 		hideChildren() {
-			this.effectorDials.forEach(function(dial) {
+			this.effectorDials.forEach(function (dial) {
 				dial.hide();
 			});
 		}
 		showChildren() {
-			this.effectorDials.forEach(function(dial) {
+			this.effectorDials.forEach(function (dial) {
 				dial.show();
 			});
 		}
@@ -1267,6 +1267,6 @@ module.exports = function () {
 			}
 		}
 	}
-	
+
 	return methods;
 }
