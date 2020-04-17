@@ -522,6 +522,7 @@ module.exports = function () {
 			var tubeMat = new BABYLON.StandardMaterial('toolTipSphereMat', scene);
 			tubeMat.ambientColor = new BABYLON.Color3(0.3, 0.3, 0.3);
 			tubeMat.diffuseColor = new BABYLON.Color3(1,1,1);
+			tubeMat.emissiveColor = new BABYLON.Color3(0.8,0.8,0.8);
 
 			tubeToolTip.material = tubeMat;
 
