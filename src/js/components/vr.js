@@ -221,14 +221,10 @@ module.exports = function () {
 			// let wahwahToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Wahwah', wahwah, wahwahOptions);
 			
 			let chorusOptions = {
-				rate: {
-					min: 4,
-					max: 8,
-					displayName: 'Rate'
-				},
+
 				feedback: {
-					min: .5,
-					max: .6,
+					min: .4,
+					max: .9,
 					displayName: 'Feedback'
 				},
 				delay: {
@@ -237,7 +233,7 @@ module.exports = function () {
 					displayName: 'Delay'
 				},
 				tunaOptions: {
-					rate: 1.5,         //0.01 to 8+
+					rate: 4,         //0.01 to 8+
 					feedback: 0.2,     //0 to 1+
 					delay: 0.75,     //0 to 1
 					bypass: 0          //the value 1 starts the effect as bypassed, 0 or 1
@@ -246,64 +242,64 @@ module.exports = function () {
 			let chorus = new tuna.Chorus(chorusOptions.tunaOptions);
 			let chorusToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Chorus', chorus, chorusOptions);
 			
-			// let delayOptions = { 
-			// 	delayTime: {
-			// 		min: 0,
-			// 		max: .8,
-			// 		displayName: 'DelayTime'
-			// 	},
-			// 	wetLevel: {
-			// 		min: 0,
-			// 		max: 1,
-			// 		displayName: 'Wet Level'
-			// 	},
-			// 	dryLevel: {
-			// 		min: 0,
-			// 		max: 1,
-			// 		displayName: 'Dry Level'
-			// 	},
-			// 	cutoff: {
-			// 		min: 0,
-			// 		max: 1,
-			// 		displayName: 'Cutoff'
-			// 	},
-			// 	tunaOptions: {
-			// 		feedback: 0.45,    //0 to 1+
-			// 		delayTime: 150,    //1 to 10000 milliseconds
-			// 		wetLevel: 0.25,    //0 to 1+
-			// 		dryLevel: 1,       //0 to 1+
-			// 		cutoff: 2000,      //cutoff frequency of the built in lowpass-filter. 20 to 22050
-			// 		bypass: 0
-			// 	}
-			// };
-			// let delay = new tuna.Delay(delayOptions.tunaOptions);
-			// let delayToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Delay', delay, delayOptions);
-			
-			let tremoloOptions = {
-				intensity: {
-					min: 0,
+			let delayOptions = { 
+				delayTime: {
+					min: 1,
+					max: 1000,
+					displayName: 'DelayTime'
+				},
+				wetLevel: {
+					min: .1,
 					max: 1,
-					displayName: 'Intensity'
+					displayName: 'Wet Level'
 				},
-				rate: {
-					min: .001,
-					max: 8,
-					displayName: 'Rate'
+				dryLevel: {
+					min: .1,
+					max: 1,
+					displayName: 'Dry Level'
 				},
-				stereoPhase: {
-					min: 0,
-					max: 180,
-					displayName: 'Stereo Phase'
+				cutoff: {
+					min: 20,
+					max: 22050,
+					displayName: 'Cutoff'
 				},
 				tunaOptions: {
-					intensity: 0.3,    //0 to 1
-					rate: 4,         //0.001 to 8
-					stereoPhase: 0,    //0 to 180
+					feedback: 0.45,    //0 to 1+
+					delayTime: 150,    //1 to 10000 milliseconds
+					wetLevel: 0.25,    //0 to 1+
+					dryLevel: 1,       //0 to 1+
+					cutoff: 2000,      //cutoff frequency of the built in lowpass-filter. 20 to 22050
 					bypass: 0
 				}
 			};
-			let tremolo = new tuna.Tremolo(tremoloOptions.tunaOptions);
-			let tremoloToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Tremolo', tremolo, tremoloOptions);
+			let delay = new tuna.Delay(delayOptions.tunaOptions);
+			let delayToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Delay', delay, delayOptions);
+			
+			// let tremoloOptions = {
+			// 	intensity: {
+			// 		min: 0,
+			// 		max: 1,
+			// 		displayName: 'Intensity'
+			// 	},
+			// 	rate: {
+			// 		min: .001,
+			// 		max: 8,
+			// 		displayName: 'Rate'
+			// 	},
+			// 	stereoPhase: {
+			// 		min: 0,
+			// 		max: 180,
+			// 		displayName: 'Stereo Phase'
+			// 	},
+			// 	tunaOptions: {
+			// 		intensity: 0.3,    //0 to 1
+			// 		rate: 4,         //0.001 to 8
+			// 		stereoPhase: 0,    //0 to 180
+			// 		bypass: 0
+			// 	}
+			// };
+			// let tremolo = new tuna.Tremolo(tremoloOptions.tunaOptions);
+			// let tremoloToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Tremolo', tremolo, tremoloOptions);
 			
 			// let filterTypes = ['lowpass', 'highpass', 'bandpass', 'lowshelf', 'highshelf', 'peaking', 'notch', 'allpass'];
 			// let filterOptions = {
