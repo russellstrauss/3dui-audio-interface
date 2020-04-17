@@ -7,10 +7,10 @@ require('howler-plugin-effect-chain');
 module.exports = function () {
 
 	var canvas, engine, scene, camera, vrHelper;
-	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, lastPicked, selectedMesh, intersectedMesh, fader, scalingRod = { balloonTotalLength: .3 }, cursor;
+	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, lastPicked, selectedMesh, intersectedMesh, scalingRod = { balloonTotalLength: .3 }, cursor;
 	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0), zBuffer = .01;
 	var menuItems = [], effectors = [], toggles = [], highlightColor = new BABYLON.Color3(.5, 0, 0), selectedColor = new BABYLON.Color3(1, 0, 0), activeTool, balloonOrigin;
-	var record, records = [], desk, testPoint, showTestPoints = false, showVector, showVector2, showVector3, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 1000, albumCount = 0, vinylStart, maxRecordCount = 1;
+	var record, records = [], desk, testPoint, showTestPoints = false, showVector, showVector2, showVector3, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 500, albumCount = 0, vinylStart, maxRecordCount = 1;
 	var tuna;
 	var leftSphereToolTip;
 	var rightSphereToolTip;
@@ -57,9 +57,10 @@ module.exports = function () {
 			camera = new BABYLON.ArcRotateCamera('Camera', -Math.PI / 2, Math.PI / 2, 12, BABYLON.Vector3.Zero(), scene);
 			camera.position = new BABYLON.Vector3(0, 1.5, -2);
 			camera.attachControl(canvas, true);
-
+			
 			self.setLighting();
 			self.addDesk();
+			self.addCursor();
 			self.loadAssets();
 			self.addEffects();
 			self.addDebugButtons();
@@ -75,71 +76,66 @@ module.exports = function () {
 			});
 			
 			let toggleBaseLocation = new BABYLON.Vector3(.24, 1.16, .9);
-			let toggleSpacing = .07;
-			let phaserOptions = {
-				rate: {
-					min: .01,
-					max: 8,
-					displayName: 'Rate'
-				},
-				depth: {
-					min: 0,
-					max: 1,
-					displayName: 'Depth'
-				},
-				feedback: {
-					min: 0,
-					max: 1,
-					displayName: 'Feedback'
-				},
-				stereoPhase: {
-					min: 0,
-					max: 180,
-					displayName: 'Stereo Phase'
-				},
-				baseModulationFrequency: {
-					min: 500,
-					max: 1500,
-					displayName: 'Base Modulation'
-				},
-				tunaOptions: {
-					rate: 1.2,                     //0.01 to 8 is a decent range, but higher values are possible
-					depth: 0.3,                    //0 to 1
-					feedback: 0.2,                 //0 to 1+
-					stereoPhase: 30,               //0 to 180
-					baseModulationFrequency: 700,  //500 to 1500
-					bypass: 0
-				}
-			};
-			let phaser = new tuna.Phaser(phaserOptions.tunaOptions);
-			let phaserToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Phaser', phaser, phaserOptions);
+			let toggleSpacing = .05;
+			// let phaserOptions = {
+			// 	rate: {
+			// 		min: .01,
+			// 		max: 8,
+			// 		displayName: 'Rate'
+			// 	},
+			// 	depth: {
+			// 		min: 0,
+			// 		max: 1,
+			// 		displayName: 'Depth'
+			// 	},
+			// 	feedback: {
+			// 		min: 0,
+			// 		max: .6,
+			// 		displayName: 'Feedback'
+			// 	},
+			// 	stereoPhase: {
+			// 		min: 0,
+			// 		max: 180,
+			// 		displayName: 'Stereo Phase'
+			// 	},
+			// 	baseModulationFrequency: {
+			// 		min: 500,
+			// 		max: 1500,
+			// 		displayName: 'Base Modulation'
+			// 	},
+			// 	tunaOptions: {
+			// 		rate: 1.2,                     //0.01 to 8 is a decent range, but higher values are possible
+			// 		depth: 0.3,                    //0 to 1
+			// 		feedback: 0.2,                 //0 to 1+
+			// 		stereoPhase: 30,               //0 to 180
+			// 		baseModulationFrequency: 700,  //500 to 1500
+			// 		bypass: 0
+			// 	}
+			// };
+			// let phaser = new tuna.Phaser(phaserOptions.tunaOptions);
+			// let phaserToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Phaser', phaser, phaserOptions);
 
-			let overdriveOptions = {
-				drive: {
-					min: 0,
-					max: 1,
-					displayName: 'Drive'
-				},
-				curveAmount: {
-					min: 0,
-					max: 1,
-					displayName: 'Curve Amount'
-				},
-				// algorithmIndex: {
-				// 	min: 0,
-				// 	max: 5,
-				// 	displayName: 'Algorithm Index'
-				// },
-				tunaOptions: {
-					outputGain: -20,           //-42 to 0 in dB
-					drive: 0.7,              //0 to 1
-					curveAmount: 1,          //0 to 1
-					algorithmIndex: 1,       //0 to 5, selects one of our drive algorithms
-					bypass: 0
-				}
-			};
-			let overdrive = new tuna.Overdrive(overdriveOptions.tunaOptions);
-			let overdriveToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Overdrive', overdrive, overdriveOptions);
+			// let overdriveOptions = {
+			// 	drive: {
+			// 		min: 0,
+			// 		max: 1,
+			// 		displayName: 'Drive'
+			// 	},
+			// 	curveAmount: {
+			// 		min: 0,
+			// 		max: 1,
+			// 		displayName: 'Curve Amount'
+			// 	},
+			// 	tunaOptions: {
+			// 		outputGain: -20,           //-42 to 0 in dB
+			// 		drive: 0.7,              //0 to 1
+			// 		curveAmount: 1,          //0 to 1
+			// 		algorithmIndex: 0,       //0 to 5, selects one of our drive algorithms
+			// 		bypass: 0
+			// 	}
+			// };
+			// let overdrive = new tuna.Overdrive(overdriveOptions.tunaOptions);
+			// let overdriveToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Overdrive', overdrive, overdriveOptions);
 			
 			let moogOptions = {
 				cutoff: {
@@ -151,11 +147,6 @@ module.exports = function () {
 					min: 0,
 					max: 4,
 					displayName: 'Resonance'
-				},
-				bufferSize: {
-					min: 256,
-					max: 16384,
-					displayName: 'Buffer Size'
 				},
 				tunaOptions: {
 					cutoff: 0.065,    //0 to 1
@@ -169,18 +160,13 @@ module.exports = function () {
 			let bitcrusherOptions = {
 				bits: {
 					min: 1,
-					max: 16,
+					max: 8,
 					displayName: 'Bits'
 				},
 				normfreq: {
 					min: 0,
 					max: 1,
 					displayName: 'Norm Frequency'
-				},
-				bufferSize: {
-					min: 256,
-					max: 16384,
-					displayName: 'Buffer Size'
 				},
 				tunaOptions: {
 					bits: 4,          //1 to 16
@@ -191,44 +177,164 @@ module.exports = function () {
 			let bitcrusher = new tuna.Bitcrusher(bitcrusherOptions.tunaOptions);
 			let bitcrusherToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Bitcrusher', bitcrusher, bitcrusherOptions);
 			
-			let wahwahOptions = {
-				baseFrequency: {
+			// let wahwahOptions = {
+			// 	baseFrequency: {
+			// 		min: 0,
+			// 		max: 1,
+			// 		displayName: 'Base Frequency'
+			// 	},
+			// 	excursionOctaves: {
+			// 		min: 1,
+			// 		max: 6,
+			// 		displayName: 'Excursion Octaves'
+			// 	},
+			// 	sweep: {
+			// 		min: 0,
+			// 		max: 1,
+			// 		displayName: 'Sweep'
+			// 	},
+			// 	resonance: {
+			// 		min: 1,
+			// 		max: 100,
+			// 		displayName: 'Resonance'
+			// 	},
+			// 	sensitivity: {
+			// 		min: -1,
+			// 		max: 1,
+			// 		displayName: 'Sensitivity'
+			// 	},
+			// 	tunaOptions: {
+			// 		automode: true,                //true/false
+			// 		baseFrequency: 0.5,            //0 to 1
+			// 		excursionOctaves: 2,           //1 to 6
+			// 		sweep: 0.2,                    //0 to 1
+			// 		resonance: 10,                 //1 to 100
+			// 		sensitivity: 0.5,              //-1 to 1
+			// 		bypass: 0
+			// 	}
+			// };
+			// let wahwah = new tuna.WahWah(wahwahOptions.tunaOptions);
+			// let wahwahToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Wahwah', wahwah, wahwahOptions);
+			
+			let chorusOptions = {
+				rate: {
+					min: .01,
+					max: 8,
+					displayName: 'Rate'
+				},
+				feedback: {
+					min: 0,
+					max: .8,
+					displayName: 'Feedback'
+				},
+				delay: {
 					min: 0,
 					max: 1,
-					displayName: 'Base Frequency'
-				},
-				excursionOctaves: {
-					min: 1,
-					max: 6,
-					displayName: 'Excursion Octaves'
-				},
-				sweep: {
-					min: 0,
-					max: 1,
-					displayName: 'Sweep'
-				},
-				resonance: {
-					min: 1,
-					max: 100,
-					displayName: 'Resonance'
-				},
-				sensitivity: {
-					min: -1,
-					max: 1,
-					displayName: 'Sensitivity'
+					displayName: 'Delay'
 				},
 				tunaOptions: {
-					automode: true,                //true/false
-					baseFrequency: 0.5,            //0 to 1
-					excursionOctaves: 2,           //1 to 6
-					sweep: 0.2,                    //0 to 1
-					resonance: 10,                 //1 to 100
-					sensitivity: 0.5,              //-1 to 1
+					rate: 1.5,         //0.01 to 8+
+					feedback: 0.2,     //0 to 1+
+					delay: 0.0045,     //0 to 1
+					bypass: 0          //the value 1 starts the effect as bypassed, 0 or 1
+				}
+			};
+			let chorus = new tuna.Chorus(chorusOptions.tunaOptions);
+			let chorusToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Chorus', chorus, chorusOptions);
+			
+			// let delayOptions = { 
+			// 	delayTime: {
+			// 		min: 0,
+			// 		max: .8,
+			// 		displayName: 'DelayTime'
+			// 	},
+			// 	wetLevel: {
+			// 		min: 0,
+			// 		max: 1,
+			// 		displayName: 'Wet Level'
+			// 	},
+			// 	dryLevel: {
+			// 		min: 0,
+			// 		max: 1,
+			// 		displayName: 'Dry Level'
+			// 	},
+			// 	cutoff: {
+			// 		min: 0,
+			// 		max: 1,
+			// 		displayName: 'Cutoff'
+			// 	},
+			// 	tunaOptions: {
+			// 		feedback: 0.45,    //0 to 1+
+			// 		delayTime: 150,    //1 to 10000 milliseconds
+			// 		wetLevel: 0.25,    //0 to 1+
+			// 		dryLevel: 1,       //0 to 1+
+			// 		cutoff: 2000,      //cutoff frequency of the built in lowpass-filter. 20 to 22050
+			// 		bypass: 0
+			// 	}
+			// };
+			// let delay = new tuna.Delay(delayOptions.tunaOptions);
+			// let delayToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Delay', delay, delayOptions);
+			
+			let tremoloOptions = {
+				intensity: {
+					min: 0,
+					max: 1,
+					displayName: 'Intensity'
+				},
+				rate: {
+					min: .001,
+					max: 8,
+					displayName: 'Rate'
+				},
+				stereoPhase: {
+					min: 0,
+					max: 180,
+					displayName: 'Stereo Phase'
+				},
+				tunaOptions: {
+					intensity: 0.3,    //0 to 1
+					rate: 4,         //0.001 to 8
+					stereoPhase: 0,    //0 to 180
 					bypass: 0
 				}
 			};
-			let wahwah = new tuna.WahWah(wahwahOptions.tunaOptions);
-			let wahwahToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Wahwah', wahwah, wahwahOptions);
+			let tremolo = new tuna.Tremolo(tremoloOptions.tunaOptions);
+			let tremoloToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Tremolo', tremolo, tremoloOptions);
+			
+			// let filterTypes = ['lowpass', 'highpass', 'bandpass', 'lowshelf', 'highshelf', 'peaking', 'notch', 'allpass'];
+			// let filterOptions = {
+			// 	intensity: {
+			// 		min: 0,
+			// 		max: 1,
+			// 		displayName: 'Intensity'
+			// 	},
+			// 	rate: {
+			// 		min: .001,
+			// 		max: 8,
+			// 		displayName: 'Rate'
+			// 	},
+			// 	stereoPhase: {
+			// 		min: 0,
+			// 		max: 180,
+			// 		displayName: 'Stereo Phase'
+			// 	},
+			// 	tunaOptions: {
+			// 		frequency: 440, //20 to 22050
+			// 		Q: 1, //0.001 to 100
+			// 		gain: 0, //-40 to 40 (in decibels)
+			// 		filterType: 'lowpass', //lowpass, highpass, bandpass, lowshelf, highshelf, peaking, notch, allpass
+			// 		bypass: 0
+			// 	}
+			// };
+			// let filter = new tuna.Filter(filterOptions.tunaOptions);
+			// let filterToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Filter', filter, filterOptions);
+			
+			
+			// let filterCountSwitch = 0;
+			// let filterDial = new MenuItemBlock(new BABYLON.Vector3(.12, 1.16, .8), 'Filter');
+			// filterDial.effector = new Effector(filterDial, 0, 1, scalingRod, function(value) {
+			// 	if (record) filter.filterType = filterTypes[filterCountSwitch%filterTypes.length];
+			// });
 		},
 		
 		everyFrame: function() {
@@ -236,7 +342,6 @@ module.exports = function () {
 			let self = this;
 			if (rightController && leftController) {
 				
-				if (fader) fader.update();
 				self.updateCursor();
 				self.updateBalloon();
 				self.updateEffectors();
@@ -448,16 +553,6 @@ module.exports = function () {
 				desk.scaling = new BABYLON.Vector3(-.05, -.05, -.05);
 				desk.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
 				desk.vinylPosition = new BABYLON.Vector3(-.245, 1.165, .76);
-				
-				testPoint = BABYLON.MeshBuilder.CreateBox('test', {
-					size: .01
-				}, scene);
-				testPoint.position = desk.vinylPosition;
-				testPoint.material = new BABYLON.StandardMaterial('mat', scene);
-				testPoint.material.emissiveColor = new BABYLON.Color3(0, 1, 0);
-				testPoint.isPickable = false;
-				
-				var test = new LevelFader(new BABYLON.Vector3(.185, 1.08, -.09), .14);
 			});
 		},
 		
@@ -472,7 +567,7 @@ module.exports = function () {
 			var mat = new BABYLON.StandardMaterial('toolTipSphereMat', scene);
 			mat.diffuseColor = new BABYLON.Color3(1, 0, 1);
 			mat.wireframe = false;
-			mat.alpha = 0.1;
+			mat.alpha = 0.2;
 			sphere.material = mat;
 			sphere.isPickable = false;
 
@@ -597,13 +692,10 @@ module.exports = function () {
 			cursor.length = .6;
 			//cursor.material.wireframe = true;
 			cursor.isPickable = false;
-			
-			self.updateCursor();
 		},
 		
 		updateCursor: function() {
 			let self = this;
-			if (!cursor) self.addCursor();
 			cursor.direction = rightController.getForwardRay(1).direction;
 			cursor.position = rightController.devicePosition.add(rightController.getForwardRay(1).direction.scale(cursor.length));
 			
@@ -678,7 +770,6 @@ module.exports = function () {
 		},
 		
 		rightTriggerRelease: function() {
-			if (fader) fader.endDrag();
 			if (activeTool) activeTool.setInactive();
 		},
 		leftSecondaryTrigger: function(webVRController) {
@@ -759,22 +850,21 @@ module.exports = function () {
 			let assetsManager = new BABYLON.AssetsManager(scene);
 			vinylStart = new Howl({
 				src: ['./src/audio/vinyl-start.wav'],
-				html5: true,
 				preload: true,
 				autoplay: false,
 				onload: function () { }
 			});
 
 			tuna = new Tuna(Howler.ctx);
+			StartAudioContext(Howler.ctx);
 			
 			assetsManager.addBinaryFileTask('greenfields', './src/audio/arabesque.mp3').albumCover = './src/img/arabesque.jpg';
-			if (maxRecordCount > 1) assetsManager.addBinaryFileTask('greenfields', './src/audio/greenfields.mp3').albumCover = './src/img/greenfields.jpg';
-			if (maxRecordCount > 2) assetsManager.addBinaryFileTask('i-feel-for-you', './src/audio/i-feel-for-you.mp3').albumCover = './src/img/chaka-khan.jpg';
-			if (maxRecordCount > 3) assetsManager.addBinaryFileTask('quimey-neuquen', './src/audio/quimey-neuquen.mp3').albumCover = './src/img/quimey-neuquen.jpg';
+			if (maxRecordCount > 1) assetsManager.addBinaryFileTask('quimey-neuquen', './src/audio/quimey-neuquen.mp3').albumCover = './src/img/quimey-neuquen.jpg';
+			if (maxRecordCount > 2) assetsManager.addBinaryFileTask('greenfields', './src/audio/greenfields.mp3').albumCover = './src/img/greenfields.jpg';
+			if (maxRecordCount > 3) assetsManager.addBinaryFileTask('i-feel-for-you', './src/audio/i-feel-for-you.mp3').albumCover = './src/img/chaka-khan.jpg';
 			assetsManager._tasks.forEach(function(task) {
 				task.onSuccess = function(thisTask) {
 					records.push(new Record(thisTask.url, thisTask.albumCover));
-					StartAudioContext(Howler.ctx);
 				};
 			});
 			assetsManager.load();
@@ -1110,7 +1200,10 @@ module.exports = function () {
 			this.box.material.emissiveColor = selectedColor;
 			this.active = true;
 			this.showChildren();
-			if (this.effect) Howler.addEffect(this.effect);
+			if (this.effect) {
+				console.log('add effect')
+				Howler.addEffect(this.effect);
+			}
 		}
 		setInactive() {
 			this.box.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
@@ -1129,106 +1222,6 @@ module.exports = function () {
 			else {
 				this.box.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
 				this.hideLabel();
-			}
-		}
-	}
-	
-	class LevelFader {
-	
-		constructor(position, range) {
-			
-			let self = this;
-			self.group = [];
-			self.group.push(this);
-			self.transformNode = new BABYLON.TransformNode();
-			self.dragging = false;
-			self.selected = true;
-			self.origin = position.clone();
-			self.range = range;
-			
-			self.box = BABYLON.MeshBuilder.CreateBox('levelFaderMesh', {
-				size: .03
-			}, scene);
-			self.box.position = position;
-			self.box.material = new BABYLON.StandardMaterial('levelFaderMaterial', scene);
-			self.box.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
-			self.box.parent = self.transformNode;
-			self.box.isPickable = true;
-			
-			
-			self.box.getParent = function() {
-				return self;
-			}
-		}
-		
-		highlight() {
-			let self = this;
-			self.selected = true;
-			self.box.material.emissiveColor = highlightColor;
-		}
-		
-		unhighlight() {
-			let self = this;
-			self.selected = false;
-			self.box.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
-		}
-		
-		endDrag() {
-			let self = this;
-			self.group.forEach(function(fader) {
-				fader.dragging = false;
-				//fader.dragStart = null;
-				fader.unhighlight();
-			});
-		}
-		
-		startDrag(pt) {
-			let self = this;
-			self.dragStart = pt;
-		}
-		
-		update() {
-			
-			let self = this;
-			if (self.dragging) {
-				
-				let sliderStateVector = gfx.createVector(self.origin, self.box.position);
-				if (sliderStateVector.length > 0) gfx.movePoint(self.dragStart, sliderStateVector);
-				let dragDisplacement = gfx.createVector(self.dragStart, new BABYLON.Vector3(self.dragStart.x, self.dragStart.y, rightController.devicePosition.z));
-				
-				let minRange = self.origin;
-				let maxRange = gfx.movePoint(self.origin, new BABYLON.Vector3(0, 0, self.range));
-				//if (gfx.createVector(self.box.position, maxRange).length() <= 0) dragDisplacement = new BABYLON.Vector3.Zero(); 
-				
-				if (!testPoint) {
-					testPoint = BABYLON.MeshBuilder.CreateBox('test', {
-						size: .01
-					}, scene);
-					testPoint.position = maxRange;
-					testPoint.material = new BABYLON.StandardMaterial('mat', scene);
-					testPoint.material.emissiveColor = new BABYLON.Color3(0, 1, 0);
-					testPoint.isPickable = false;
-				}
-				if (!point2) {
-					point2 = testPoint.clone();
-					point2.material = new BABYLON.StandardMaterial('mat', scene);
-					point2.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
-					point2.position = minRange;
-				}
-				
-				if(!dragStartPoint){
-					dragStartPoint = BABYLON.MeshBuilder.CreateBox('test', {
-						size: .01
-					}, scene);
-					dragStartPoint.material = new BABYLON.StandardMaterial('mat', scene);
-					dragStartPoint.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
-				}
-				
-				self.box.position = new BABYLON.Vector3(self.origin.x, self.origin.y, dragDisplacement.z);
-				
-				// if (showVector) showVector.dispose();
-				// showVector = gfx.createLine(rightController.devicePosition, dragDisplacement);
-				// showVector.isPickable = false;
 			}
 		}
 	}
