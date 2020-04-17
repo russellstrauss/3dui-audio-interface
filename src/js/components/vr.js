@@ -18,6 +18,10 @@ module.exports = function () {
 	var leftStarterPosition = new BABYLON.Vector3(0, 0, 0);
 	var leftControllerPosition = new BABYLON.Vector3(0, 0, 0);
 	var intersectedRecord;
+	var beginTurningTurnedOn = false;
+	//var turningToolTip = BABYLON.Mesh.CreateLines("toolTip", [new BABYLON.Vector3(0,0,0), new BABYLON.Vector3(1,0,0)], scene, true);
+	var tubeToolTip; // = BABYLON.MeshBuilder.CreateTube("tube", {path: [new BABYLON.Vector3(0,0,0), new BABYLON.Vector3(1,0,0)], radius: 0.1, updatable: true, cap: BABYLON.Mesh.CAP_ALL}, scene);
+	
 	
 	var dragStartPoint, point2;
 
@@ -349,8 +353,11 @@ module.exports = function () {
 			}
 			if (record && record.playing) self.updateRecordProgress();
 			
+
 			if (beginTurning) {
+				beginTurningTurnedOn = true;
 				if (intersectedRecord) {
+					
 
 					var changeInPlayback = self.calculatePlaybackRate(leftStarterPosition.clone(), leftControllerPosition.clone());
 
@@ -372,9 +379,13 @@ module.exports = function () {
 
 						leftStarterPosition = leftControllerPosition.clone();
 
+
 						//beginTurning = false;
 					}
 				}
+			} else if(beginTurningTurnedOn && !beginTurning) {
+				
+				tubeToolTip.isVisible = false;
 			}
 		},
 		
@@ -493,8 +504,26 @@ module.exports = function () {
 
 		calculatePlaybackRate(oldPos, newPos) {
 			var up = BABYLON.Vector3.Up();
-			var u = (oldPos.subtract(up.scale(BABYLON.Vector3.Dot(up, oldPos)))).normalize();
-			var v = (newPos.subtract(up.scale(BABYLON.Vector3.Dot(up, newPos)))).normalize();
+
+			var oldVec = oldPos.subtract(desk.vinylPosition);
+			var newVec = newPos.subtract(desk.vinylPosition);
+
+			
+			tubeToolTip.isVisible = true;
+			var u = (oldVec.subtract(up.scale(BABYLON.Vector3.Dot(up, oldVec)))).normalize();
+			var v = (newVec.subtract(up.scale(BABYLON.Vector3.Dot(up, newVec)))).normalize();
+
+			var newPath = [];
+			newPath.push(desk.vinylPosition);
+			newPath.push(desk.vinylPosition.add(v.scale(0.15)));
+
+			tubeToolTip = new BABYLON.MeshBuilder.CreateTube("TubeTip", {path: newPath, instance: tubeToolTip, radius: 0.02})
+
+			var tubeMat = new BABYLON.StandardMaterial('toolTipSphereMat', scene);
+			tubeMat.ambientColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+			tubeMat.diffuseColor = new BABYLON.Color3(1,1,1);
+
+			tubeToolTip.material = tubeMat;
 
 			var uDotv = BABYLON.Vector3.Dot(u, v);
 			var uCrossv = BABYLON.Vector3.Cross(u, v);
@@ -564,6 +593,9 @@ module.exports = function () {
 			var sSegments = 32;
 			var sphere = BABYLON.MeshBuilder.CreateSphere('sphere', { diameter: cSize, segments: sSegments }, scene);
 			sphere.position = pos;
+
+			var tube = BABYLON.MeshBuilder.CreateTube("tube", {path: [new BABYLON.Vector3(0,0,0), new BABYLON.Vector3(1,0,0)], radius: 0.015, updatable: true, cap: BABYLON.Mesh.CAP_ALL}, scene);
+
 			var mat = new BABYLON.StandardMaterial('toolTipSphereMat', scene);
 			mat.diffuseColor = new BABYLON.Color3(1, 0, 1);
 			mat.wireframe = false;
@@ -571,6 +603,15 @@ module.exports = function () {
 			sphere.material = mat;
 			sphere.isPickable = false;
 
+			tube.isPickable = false;
+			tube.isVisible = false;
+
+			var mat2 = new BABYLON.StandardMaterial('toolTipSphereMat', scene);
+			mat2.ambientColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+			mat2.diffuseColor = new BABYLON.Color3(1,1,1);
+
+			tubeToolTip = tube;
+			tube.material = mat2;
 
 			leftSphereToolTip = sphere;
 		},
