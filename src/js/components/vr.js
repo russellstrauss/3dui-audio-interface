@@ -10,7 +10,7 @@ module.exports = function () {
 	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, lastPicked, selectedMesh, intersectedMesh, scalingRod = { balloonTotalLength: .3 }, cursor;
 	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0), zBuffer = .01;
 	var menuItems = [], effectors = [], toggles = [], highlightColor = new BABYLON.Color3(.5, 0, 0), selectedColor = new BABYLON.Color3(1, 0, 0), activeTool, balloonOrigin;
-	var record, records = [], desk, testPoint, showTestPoints = false, showVector, showVector2, showVector3, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 500, albumCount = 0, vinylStart, maxRecordCount = 1;
+	var record, records = [], desk, testPoint, showTestPoints = false, showVector, showVector2, showVector3, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 500, albumCount = 0, vinylStart;
 	var tuna;
 	var leftSphereToolTip;
 	var rightSphereToolTip;
@@ -139,13 +139,13 @@ module.exports = function () {
 			
 			let moogOptions = {
 				cutoff: {
-					min: 0,
-					max: 1,
+					min: .05,
+					max: .4,
 					displayName: 'Cutoff'
 				},
 				resonance: {
 					min: 0,
-					max: 4,
+					max: 3,
 					displayName: 'Resonance'
 				},
 				tunaOptions: {
@@ -160,7 +160,7 @@ module.exports = function () {
 			let bitcrusherOptions = {
 				bits: {
 					min: 1,
-					max: 8,
+					max: 4,
 					displayName: 'Bits'
 				},
 				normfreq: {
@@ -218,24 +218,24 @@ module.exports = function () {
 			
 			let chorusOptions = {
 				rate: {
-					min: .01,
+					min: 4,
 					max: 8,
 					displayName: 'Rate'
 				},
 				feedback: {
-					min: 0,
-					max: .8,
+					min: .5,
+					max: .6,
 					displayName: 'Feedback'
 				},
 				delay: {
-					min: 0,
+					min: .5,
 					max: 1,
 					displayName: 'Delay'
 				},
 				tunaOptions: {
 					rate: 1.5,         //0.01 to 8+
 					feedback: 0.2,     //0 to 1+
-					delay: 0.0045,     //0 to 1
+					delay: 0.75,     //0 to 1
 					bypass: 0          //the value 1 starts the effect as bypassed, 0 or 1
 				}
 			};
@@ -857,11 +857,12 @@ module.exports = function () {
 
 			tuna = new Tuna(Howler.ctx);
 			StartAudioContext(Howler.ctx);
+			Howler.volume(1);
 			
-			assetsManager.addBinaryFileTask('greenfields', './src/audio/arabesque.mp3').albumCover = './src/img/arabesque.jpg';
-			if (maxRecordCount > 1) assetsManager.addBinaryFileTask('quimey-neuquen', './src/audio/quimey-neuquen.mp3').albumCover = './src/img/quimey-neuquen.jpg';
-			if (maxRecordCount > 2) assetsManager.addBinaryFileTask('greenfields', './src/audio/greenfields.mp3').albumCover = './src/img/greenfields.jpg';
-			if (maxRecordCount > 3) assetsManager.addBinaryFileTask('i-feel-for-you', './src/audio/i-feel-for-you.mp3').albumCover = './src/img/chaka-khan.jpg';
+			//assetsManager.addBinaryFileTask('arabesque', './src/audio/arabesque.mp3').albumCover = './src/img/arabesque.jpg';
+			assetsManager.addBinaryFileTask('quimey-neuquen', './src/audio/quimey-neuquen.mp3').albumCover = './src/img/quimey-neuquen.jpg';
+			//assetsManager.addBinaryFileTask('greenfields', './src/audio/greenfields.mp3').albumCover = './src/img/greenfields.jpg';
+			assetsManager.addBinaryFileTask('i-feel-for-you', './src/audio/i-feel-for-you.mp3').albumCover = './src/img/chaka-khan.jpg';
 			assetsManager._tasks.forEach(function(task) {
 				task.onSuccess = function(thisTask) {
 					records.push(new Record(thisTask.url, thisTask.albumCover));
@@ -875,7 +876,8 @@ module.exports = function () {
 			scene.onPointerDown = function (evt, pickResult) { // click for testing on desktop
 				if (pickResult.hit) {
 					picked = pickResult.pickedMesh;
-					if (picked.name === 'albumCover') self.selectRecord(picked);
+					if (picked.name === 'albumCover' && !intersectedMesh
+					) self.selectRecord(picked);
 				}
 			};
 
@@ -1028,7 +1030,7 @@ module.exports = function () {
 
 		addAlbumCover() {
 			albumCount++;
-			let startingPoint = new BABYLON.Vector3(1.5, 1.25, 1.25);
+			let startingPoint = new BABYLON.Vector3(1.5, 3, 1.25);
 			this.albumCoverMesh = BABYLON.Mesh.CreatePlane('albumCover', .25, scene);
 			this.albumCoverMesh.position = gfx.movePoint(startingPoint, new BABYLON.Vector3(-1, 0, 0).scale(.7 * albumCount));
 			this.albumCoverMesh.material = new BABYLON.StandardMaterial('albumCoverMat', scene);
@@ -1115,8 +1117,10 @@ module.exports = function () {
 			this.selecting = true;
 			this.active = true;
 			activeTool = this;
-			balloonOrigin = this.position;
-			this.elevateLabel();
+			if (this.box.visibility > 0) {
+				balloonOrigin = this.position;
+				this.elevateLabel();
+			}
 		}
 		setInactive() {
 			this.box.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
