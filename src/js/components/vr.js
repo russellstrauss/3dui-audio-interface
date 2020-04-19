@@ -68,7 +68,7 @@ module.exports = function () {
 			self.loadAssets();
 			self.addEffects();
 			self.addDebugButtons();
-
+			
 			return scene;
 		},
 
@@ -340,13 +340,12 @@ module.exports = function () {
 		everyFrame: function () {
 
 			let self = this;
-			if (rightController && leftController) {
-
+			if (rightController) {
 				self.updateCursor();
 				self.updateBalloon();
 				self.updateEffectors();
-				self.updatePhysicalRecord()
 			}
+			if (leftController) self.updatePhysicalRecord()
 			if (record && record.playing) self.updateRecordProgress();
 
 
@@ -468,34 +467,10 @@ module.exports = function () {
 			}
 		},
 
-		//Pass in the song url and the playback rate to play the song at a specific rate
-		//Will return the actual music. You can later use the music to change parts of it.
-
-		//later use music.pause() to pause it and music.play() to play again
-		playSong: function (url, playbackRate) {
-			var music = new BABYLON.Sound('Music', url, scene, null, {
-				loop: false,
-				autoplay: true,
-				useCustomAttenuation: true
-			});
-
-			music.setPlaybackRate(playbackRate);
-
-			return music;
-		},
-
 		//Given the original Tempo (beats per minute) and a playback rate, returns the new tempo.
 		//both numbers
 		getCurrentSongTempo: function (originalTempo, playbackRate) {
 			return originalTempo * playbackRate;
-		},
-
-		getSongProgress(music) {
-			// TODO: figure out how to get the current progress of the music passed in.
-			// Length of the music should be music._length, so in theory this should just  
-			// return currentProgress / totalLength;
-
-			return;
 		},
 
 		calculatePlaybackRate(oldPos, newPos) {
@@ -583,7 +558,6 @@ module.exports = function () {
 		},
 
 		createToolTips: function (webVRController) {
-			//console.log('GOT HERE');
 			var pos = webVRController.devicePosition;
 
 			var cSize = 0.08;
@@ -622,12 +596,10 @@ module.exports = function () {
 				floorMeshName: 'ground'
 			});
 			self.deactivateTeleportation();
-			vrHelper.teleportationTarget = BABYLON.Mesh.CreateSphere('ground', 4, 0.05, scene);
-			//vrHelper._teleportBackwardsVector = new BABYLON.Vector3(0, -.1, -.1);
-			//console.log('vrHelper: ', vrHelper);
 
 			vrHelper.onNewMeshPicked.add(function (pickingInfo) { // where controller is resting/pointing, fired upon new target
 				picked = pickingInfo.pickedMesh;
+				picked.pickingInfo = pickingInfo;
 
 				if (rightController) {
 
@@ -727,7 +699,7 @@ module.exports = function () {
 			cursor.material = new BABYLON.StandardMaterial('cursorMaterial', scene);
 			cursor.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
 			cursor.material.alpha = 0.08;
-			cursor.length = .6;
+			cursor.length = .5;
 			//cursor.material.wireframe = true;
 			cursor.isPickable = false;
 		},
@@ -735,6 +707,7 @@ module.exports = function () {
 		updateCursor: function () {
 			let self = this;
 			cursor.direction = rightController.getForwardRay(1).direction;
+			cursor.ray = new BABYLON.Ray(rightController.devicePosition, cursor.direction, 5);
 			cursor.position = rightController.devicePosition.add(rightController.getForwardRay(1).direction.scale(cursor.length));
 
 			let noneIntersected = true;
@@ -899,8 +872,10 @@ module.exports = function () {
 
 			//assetsManager.addBinaryFileTask('arabesque', './src/audio/arabesque.mp3').albumCover = './src/img/arabesque.jpg';
 			assetsManager.addBinaryFileTask('quimey-neuquen', './src/audio/quimey-neuquen.mp3').albumCover = './src/img/quimey-neuquen.jpg';
+			//assetsManager.addBinaryFileTask('tomita', './src/audio/tomita.mp3').albumCover = './src/img/tomita.jpg';
+			//assetsManager.addBinaryFileTask('daft-punk', './src/audio/daft-punk.mp3').albumCover = './src/img/daft-punk.jpg';
 			//assetsManager.addBinaryFileTask('greenfields', './src/audio/greenfields.mp3').albumCover = './src/img/greenfields.jpg';
-			assetsManager.addBinaryFileTask('i-feel-for-you', './src/audio/i-feel-for-you.mp3').albumCover = './src/img/chaka-khan.jpg';
+			//assetsManager.addBinaryFileTask('i-feel-for-you', './src/audio/i-feel-for-you.mp3').albumCover = './src/img/chaka-khan.jpg';
 			assetsManager._tasks.forEach(function (task) {
 				task.onSuccess = function (thisTask) {
 					records.push(new Record(thisTask.url, thisTask.albumCover));
@@ -912,11 +887,7 @@ module.exports = function () {
 		addDebugButtons: function () {
 			let self = this;
 			scene.onPointerDown = function (evt, pickResult) { // click for testing on desktop
-				if (pickResult.hit) {
-					picked = pickResult.pickedMesh;
-					if (picked.name === 'albumCover' && !intersectedMesh
-					) self.selectRecord(picked);
-				}
+				
 			};
 
 			document.addEventListener('keyup', function (event) {
@@ -946,15 +917,49 @@ module.exports = function () {
 			this.babylonAudio = new BABYLON.Sound('Music', this.audioPath, scene, function () { //on audio buffer loaded
 				self.audioBuffer = self.babylonAudio._audioBuffer;
 				self.waveform = self.createAudioSamples();
+				
+				self.waveformDragTracker = BABYLON.MeshBuilder.CreatePlane('test', {
+					height: self.waveform.height,
+					width: timeCursorFinal.x - timeCursorOrigin.x
+				}, scene);
+				
+				self.waveformDragTracker.visibility = 0;				
+				
+				self.waveformDragTracker.position = gfx.movePoint(gfx.getMidpoint(timeCursorOrigin, timeCursorFinal), new BABYLON.Vector3(0, 0, -.1));
+				
+				var pointerDragBehavior = new BABYLON.PointerDragBehavior({
+					dragAxis: new BABYLON.Vector3(1,0,0),
+					useObjectOrientationForDragging: false
+				});
+				pointerDragBehavior.moveAttached = false;
+
+				pointerDragBehavior.onDragObservable.add((event)=>{
+					
+					let offset = self.waveform.width / 2;
+					let currentPoint = event.dragPlanePoint.x + offset;
+					if (event.dragPlanePoint.x > self.timeCursorOrigin.x && event.dragPlanePoint.x < self.timeCursorFinal.x){ 
+						
+						timeCursor.position.x = currentPoint;
+						
+						let pickedProgress = currentPoint - timeCursorOrigin.x - offset;
+						let newProgress = pickedProgress / self.waveform.width;
+						
+						self.progress = newProgress;
+						let seconds = self.audio.duration(self.audio.soundID) * newProgress;
+						self.audio.seek(seconds, self.audio.soundID);
+					}
+				});
+				self.waveformDragTracker.addBehavior(pointerDragBehavior);
+				
+				timeCursor.dispose();
 				self.waveform.visibility = 0;
 				self.addAlbumCover();
-				StartAudioContext(self.babylonAudio._inputAudioNode.context);
 			},
-				{ // sound options
-					loop: false,
-					autoplay: false,
-					useCustomAttenuation: true
-				});
+			{ // sound options
+				loop: false,
+				autoplay: false,
+				useCustomAttenuation: true
+			});
 			this.audio = new Howl({
 				src: [self.audioPath],
 				html5: false,
@@ -1047,9 +1052,12 @@ module.exports = function () {
 			let path3d = new BABYLON.Path3D(points);
 			let curve = path3d.getCurve();
 			let waveform = BABYLON.Mesh.CreateLines('curve', curve, scene);
-			waveform.isPickable = false;
+			waveform.isPickable = true;
 			maxHeight = maxHeight - timeCursorOrigin.y;
 			self.timeCursorOrigin = timeCursorOrigin, self.timeCursorFinal = timeCursorFinal;
+			timeCursor = gfx.createLineFromPoints(gfx.movePoint(self.timeCursorOrigin, new BABYLON.Vector3(0, minHeight, -zBuffer)), gfx.movePoint(self.timeCursorOrigin, new BABYLON.Vector3(0, maxHeight, -zBuffer)), new BABYLON.Color3(1, 0, 0));
+			waveform.height = maxHeight - minHeight;
+			waveform.width = self.timeCursorFinal.x - self.timeCursorOrigin.x;
 			waveform.minHeight = minHeight;
 			waveform.maxHeight = maxHeight;
 			return waveform;
@@ -1242,10 +1250,7 @@ module.exports = function () {
 			this.box.material.emissiveColor = selectedColor;
 			this.active = true;
 			this.showChildren();
-			if (this.effect) {
-				console.log('add effect')
-				Howler.addEffect(this.effect);
-			}
+			if (this.effect) Howler.addEffect(this.effect);
 		}
 		setInactive() {
 			this.box.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
