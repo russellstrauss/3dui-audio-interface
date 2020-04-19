@@ -6,24 +6,15 @@ require('howler-plugin-effect-chain');
 
 module.exports = function () {
 
-	var canvas, engine, scene, camera, vrHelper;
-	var leftController, rightController, rightJoystick, leftJoystick, draggedMesh, picked, lastPicked, selectedMesh, intersectedMesh, scalingRod = { balloonTotalLength: .3 }, cursor;
-	var red = new BABYLON.Color3(1, 0, 0), green = new BABYLON.Color3(0, 1, 0), green = new BABYLON.Color3(0, 1, 0), white = new BABYLON.Color3(1, 1, 1), black = new BABYLON.Color3(0, 0, 0), zBuffer = .01;
-	var menuItems = [], effectors = [], toggles = [], highlightColor = new BABYLON.Color3(.5, 0, 0), selectedColor = new BABYLON.Color3(1, 0, 0), activeTool, balloonOrigin;
-	var record, records = [], desk, testPoint, showTestPoints = false, showVector, showVector2, showVector3, timeCursor, timeCursorOrigin, timeCursorFinal, waveformFidelity = 500, albumCount = 0, vinylStart;
-	var tuna;
-	var leftSphereToolTip;
-	var rightSphereToolTip;
-	var beginTurning = false;
-	var leftStarterPosition = new BABYLON.Vector3(0, 0, 0);
-	var leftControllerPosition = new BABYLON.Vector3(0, 0, 0);
-	var intersectedRecord;
-	var beginTurningTurnedOn = false;
-	//var turningToolTip = BABYLON.Mesh.CreateLines("toolTip", [new BABYLON.Vector3(0,0,0), new BABYLON.Vector3(1,0,0)], scene, true);
-	var tubeToolTip; // = BABYLON.MeshBuilder.CreateTube("tube", {path: [new BABYLON.Vector3(0,0,0), new BABYLON.Vector3(1,0,0)], radius: 0.1, updatable: true, cap: BABYLON.Mesh.CAP_ALL}, scene);
-
-
-	var dragStartPoint, point2;
+	var canvas, engine, scene, camera, vrHelper, tuna;
+	var leftController, rightController, rightJoystick, leftJoystick;
+	var cursor, draggedMesh, picked, lastPicked, selectedMesh, intersectedMesh, scalingRod = { balloonTotalLength: .3 };
+	var activeTool, balloonOrigin, timeCursor, timeCursorOrigin, timeCursorFinal, vinylStart;
+	var records = [], menuItems = [], effectors = [], toggles = [];
+	var record, desk,  waveformFidelity = 500, albumCount = 0, zBuffer = .01;
+	var highlightColor = BABYLON.Color3.FromHexString('#00ffe8'), selectedColor = BABYLON.Color3.FromHexString('#e12d2d'), white = new BABYLON.Color3(1, 1, 1);
+	
+	var leftSphereToolTip, rightSphereToolTip, beginTurning = false, leftStarterPosition = new BABYLON.Vector3(0, 0, 0), leftControllerPosition = new BABYLON.Vector3(0, 0, 0), intersectedRecord, beginTurningTurnedOn = false, tubeToolTip; // = BABYLON.MeshBuilder.CreateTube("tube", {path: [new BABYLON.Vector3(0,0,0), new BABYLON.Vector3(1,0,0)], radius: 0.1, updatable: true, cap: BABYLON.Mesh.CAP_ALL}, scene);
 
 	let methods = {
 
@@ -56,6 +47,9 @@ module.exports = function () {
 			vrHelper = scene.createDefaultVRExperience();
 			vrHelper.onEnteringVRObservable.add(function () {
 				self.addButtonEvents();
+			});
+			vrHelper.onExitingVRObservable.add(function() {
+				self.stopAllAudio();
 			});
 
 			camera = new BABYLON.ArcRotateCamera('Camera', -Math.PI / 2, Math.PI / 2, 12, BABYLON.Vector3.Zero(), scene);
@@ -119,27 +113,27 @@ module.exports = function () {
 			// let phaser = new tuna.Phaser(phaserOptions.tunaOptions);
 			// let phaserToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Phaser', phaser, phaserOptions);
 
-			// let overdriveOptions = {
-			// 	drive: {
-			// 		min: 0,
-			// 		max: 1,
-			// 		displayName: 'Drive'
-			// 	},
-			// 	curveAmount: {
-			// 		min: 0,
-			// 		max: 1,
-			// 		displayName: 'Curve Amount'
-			// 	},
-			// 	tunaOptions: {
-			// 		outputGain: -20,           //-42 to 0 in dB
-			// 		drive: 0.7,              //0 to 1
-			// 		curveAmount: 1,          //0 to 1
-			// 		algorithmIndex: 0,       //0 to 5, selects one of our drive algorithms
-			// 		bypass: 0
-			// 	}
-			// };
-			// let overdrive = new tuna.Overdrive(overdriveOptions.tunaOptions);
-			// let overdriveToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Overdrive', overdrive, overdriveOptions);
+			let overdriveOptions = {
+				drive: {
+					min: 0,
+					max: 1,
+					displayName: 'Drive'
+				},
+				curveAmount: {
+					min: 0,
+					max: 1,
+					displayName: 'Curve Amount'
+				},
+				tunaOptions: {
+					outputGain: -20,           //-42 to 0 in dB
+					drive: 0.7,              //0 to 1
+					curveAmount: 1,          //0 to 1
+					algorithmIndex: 0,       //0 to 5, selects one of our drive algorithms
+					bypass: 0
+				}
+			};
+			let overdrive = new tuna.Overdrive(overdriveOptions.tunaOptions);
+			let overdriveToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Overdrive', overdrive, overdriveOptions);
 
 			let moogOptions = {
 				cutoff: {
@@ -163,18 +157,18 @@ module.exports = function () {
 
 			let bitcrusherOptions = {
 				bits: {
-					min: 1,
+					min: 2,
 					max: 4,
 					displayName: 'Bits'
 				},
 				normfreq: {
-					min: 0,
-					max: 1,
-					displayName: 'Norm Frequency'
+					min: .1,
+					max: .4,
+					displayName: 'Frequency'
 				},
 				tunaOptions: {
-					bits: 4,          //1 to 16
-					normfreq: 0.1,    //0 to 1
+					bits: 6,          //1 to 16
+					normfreq: .1,    //0 to 1
 					bufferSize: 4096  //256 to 16384
 				}
 			};
@@ -220,33 +214,33 @@ module.exports = function () {
 			// let wahwah = new tuna.WahWah(wahwahOptions.tunaOptions);
 			// let wahwahToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Wahwah', wahwah, wahwahOptions);
 
-			let chorusOptions = {
+			// let chorusOptions = {
 
-				feedback: {
-					min: .4,
-					max: .9,
-					displayName: 'Feedback'
-				},
-				delay: {
-					min: .5,
-					max: 1,
-					displayName: 'Delay'
-				},
-				tunaOptions: {
-					rate: 4,         //0.01 to 8+
-					feedback: 0.2,     //0 to 1+
-					delay: 0.75,     //0 to 1
-					bypass: 0          //the value 1 starts the effect as bypassed, 0 or 1
-				}
-			};
-			let chorus = new tuna.Chorus(chorusOptions.tunaOptions);
-			let chorusToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing * toggles.length)), 'Chorus', chorus, chorusOptions);
+			// 	feedback: {
+			// 		min: .4,
+			// 		max: .9,
+			// 		displayName: 'Feedback'
+			// 	},
+			// 	delay: {
+			// 		min: .5,
+			// 		max: 1,
+			// 		displayName: 'Delay'
+			// 	},
+			// 	tunaOptions: {
+			// 		rate: 4,         //0.01 to 8+
+			// 		feedback: 0.2,     //0 to 1+
+			// 		delay: 0.75,     //0 to 1
+			// 		bypass: 0          //the value 1 starts the effect as bypassed, 0 or 1
+			// 	}
+			// };
+			// let chorus = new tuna.Chorus(chorusOptions.tunaOptions);
+			// let chorusToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing * toggles.length)), 'Chorus', chorus, chorusOptions);
 
 			let delayOptions = {
 				delayTime: {
 					min: 1,
-					max: 1000,
-					displayName: 'DelayTime'
+					max: 800,
+					displayName: 'Delay (1-800ms)'
 				},
 				wetLevel: {
 					min: .1,
@@ -260,14 +254,14 @@ module.exports = function () {
 				},
 				cutoff: {
 					min: 20,
-					max: 22050,
+					max: 5000,
 					displayName: 'Cutoff'
 				},
 				tunaOptions: {
 					feedback: 0.45,    //0 to 1+
 					delayTime: 150,    //1 to 10000 milliseconds
-					wetLevel: 0.25,    //0 to 1+
-					dryLevel: 1,       //0 to 1+
+					wetLevel: .5,    //0 to 1+
+					dryLevel: .5,       //0 to 1+
 					cutoff: 2000,      //cutoff frequency of the built in lowpass-filter. 20 to 22050
 					bypass: 0
 				}
@@ -275,31 +269,31 @@ module.exports = function () {
 			let delay = new tuna.Delay(delayOptions.tunaOptions);
 			let delayToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing * toggles.length)), 'Delay', delay, delayOptions);
 
-			// let tremoloOptions = {
-			// 	intensity: {
-			// 		min: 0,
-			// 		max: 1,
-			// 		displayName: 'Intensity'
-			// 	},
-			// 	rate: {
-			// 		min: .001,
-			// 		max: 8,
-			// 		displayName: 'Rate'
-			// 	},
-			// 	stereoPhase: {
-			// 		min: 0,
-			// 		max: 180,
-			// 		displayName: 'Stereo Phase'
-			// 	},
-			// 	tunaOptions: {
-			// 		intensity: 0.3,    //0 to 1
-			// 		rate: 4,         //0.001 to 8
-			// 		stereoPhase: 0,    //0 to 180
-			// 		bypass: 0
-			// 	}
-			// };
-			// let tremolo = new tuna.Tremolo(tremoloOptions.tunaOptions);
-			// let tremoloToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Tremolo', tremolo, tremoloOptions);
+			let tremoloOptions = {
+				intensity: {
+					min: 0,
+					max: 1,
+					displayName: 'Intensity'
+				},
+				rate: {
+					min: .001,
+					max: 8,
+					displayName: 'Oscillation'
+				},
+				stereoPhase: {
+					min: 0,
+					max: 180,
+					displayName: 'Stereo Phase'
+				},
+				tunaOptions: {
+					intensity: 0.3,    //0 to 1
+					rate: 4,         //0.001 to 8
+					stereoPhase: 0,    //0 to 180
+					bypass: 0
+				}
+			};
+			let tremolo = new tuna.Tremolo(tremoloOptions.tunaOptions);
+			let tremoloToggle = new Toggle(gfx.movePoint(toggleBaseLocation, new BABYLON.Vector3(0, 0, -1).scale(toggleSpacing*toggles.length)), 'Tremolo', tremolo, tremoloOptions);
 
 			// let filterTypes = ['lowpass', 'highpass', 'bandpass', 'lowshelf', 'highshelf', 'peaking', 'notch', 'allpass'];
 			// let filterOptions = {
@@ -410,8 +404,10 @@ module.exports = function () {
 		},
 
 		updateBalloon: function () {
+			
 			if (balloonOrigin) {
 
+				let balloonGroup = new BABYLON.TransformNode();
 				if (!scalingRod.initialLength) {
 					scalingRod.scalingState = true;
 					scalingRod.initialLength = gfx.createVector(leftController.devicePosition, rightController.devicePosition).length();
@@ -429,6 +425,7 @@ module.exports = function () {
 
 				if (scalingRod.balloonPositionIndicatorMesh) scalingRod.balloonPositionIndicatorMesh.dispose();
 				scalingRod.balloonPositionIndicatorMesh = BABYLON.MeshBuilder.CreateBox('balloon', { size: .01 }, scene);
+				scalingRod.balloonPositionIndicatorMesh.parent = balloonGroup;
 				scalingRod.balloonPositionIndicatorMesh.isPickable = false;
 				scalingRod.balloonPositionIndicatorMesh.position = gfx.movePoint(balloonOrigin, scalingRod.balloonVector);
 				if (!scalingRod.balloonPositionIndicatorMesh.material) {
@@ -440,10 +437,13 @@ module.exports = function () {
 				// show progress indicators
 				if (scalingRod.balloonTotalVectorMesh) scalingRod.balloonTotalVectorMesh.dispose();
 				scalingRod.balloonTotalVectorMesh = gfx.createLine(balloonOrigin, scalingRod.balloonTotalVector, new BABYLON.Color3(1, 1, 1), .5);
+				scalingRod.balloonTotalVectorMesh.parent = balloonGroup;
 				scalingRod.balloonTotalVectorMesh.isPickable = false;
 				if (scalingRod.balloonVectorMesh) scalingRod.balloonVectorMesh.dispose();
 				scalingRod.balloonVectorMesh = gfx.createLine(balloonOrigin, scalingRod.balloonVector, new BABYLON.Color3(0, 1, 0), .5);
 				scalingRod.balloonVectorMesh.isPickable = false;
+				scalingRod.balloonVectorMesh.parent = balloonGroup;
+				scalingRod.balloonGroup = balloonGroup;
 				scalingRod.state = scalingRod.balloonVector.length() / scalingRod.balloonTotalLength; // final 0.0.1 value
 			}
 			else {
@@ -698,6 +698,8 @@ module.exports = function () {
 			cursor = BABYLON.MeshBuilder.CreateIcoSphere('cursor', { radius: .02, subdivisions: 2 }, scene);
 			cursor.material = new BABYLON.StandardMaterial('cursorMaterial', scene);
 			cursor.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
+			cursor.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+			cursor.material.ambientColor = new BABYLON.Color3(1, 0, 0);
 			cursor.material.alpha = 0.08;
 			cursor.length = .5;
 			//cursor.material.wireframe = true;
@@ -854,6 +856,12 @@ module.exports = function () {
 		stopAllAudio: function () {
 			Howler.stop();
 		},
+		
+		disposeGroup: function(transformNode) {
+			if (transformNode && transformNode._children) transformNode._children.forEach(function(mesh) {
+				mesh.dispose();
+			});
+		},
 
 		loadAssets: function () {
 			let self = this;
@@ -871,11 +879,11 @@ module.exports = function () {
 			Howler.volume(1);
 
 			//assetsManager.addBinaryFileTask('arabesque', './src/audio/arabesque.mp3').albumCover = './src/img/arabesque.jpg';
-			assetsManager.addBinaryFileTask('quimey-neuquen', './src/audio/quimey-neuquen.mp3').albumCover = './src/img/quimey-neuquen.jpg';
+			//assetsManager.addBinaryFileTask('quimey-neuquen', './src/audio/quimey-neuquen.mp3').albumCover = './src/img/quimey-neuquen.jpg';
 			//assetsManager.addBinaryFileTask('tomita', './src/audio/tomita.mp3').albumCover = './src/img/tomita.jpg';
 			//assetsManager.addBinaryFileTask('daft-punk', './src/audio/daft-punk.mp3').albumCover = './src/img/daft-punk.jpg';
 			//assetsManager.addBinaryFileTask('greenfields', './src/audio/greenfields.mp3').albumCover = './src/img/greenfields.jpg';
-			//assetsManager.addBinaryFileTask('i-feel-for-you', './src/audio/i-feel-for-you.mp3').albumCover = './src/img/chaka-khan.jpg';
+			assetsManager.addBinaryFileTask('i-feel-for-you', './src/audio/i-feel-for-you.mp3').albumCover = './src/img/chaka-khan.jpg';
 			assetsManager._tasks.forEach(function (task) {
 				task.onSuccess = function (thisTask) {
 					records.push(new Record(thisTask.url, thisTask.albumCover));
@@ -1052,7 +1060,7 @@ module.exports = function () {
 			let path3d = new BABYLON.Path3D(points);
 			let curve = path3d.getCurve();
 			let waveform = BABYLON.Mesh.CreateLines('curve', curve, scene);
-			waveform.isPickable = true;
+			waveform.isPickable = false;
 			maxHeight = maxHeight - timeCursorOrigin.y;
 			self.timeCursorOrigin = timeCursorOrigin, self.timeCursorFinal = timeCursorFinal;
 			timeCursor = gfx.createLineFromPoints(gfx.movePoint(self.timeCursorOrigin, new BABYLON.Vector3(0, minHeight, -zBuffer)), gfx.movePoint(self.timeCursorOrigin, new BABYLON.Vector3(0, maxHeight, -zBuffer)), new BABYLON.Color3(1, 0, 0));
@@ -1076,7 +1084,7 @@ module.exports = function () {
 
 		addAlbumCover() {
 			albumCount++;
-			let startingPoint = new BABYLON.Vector3(1.5, 3, 1.25);
+			let startingPoint = new BABYLON.Vector3(1.5, 2.25, 1.25);
 			this.albumCoverMesh = BABYLON.Mesh.CreatePlane('albumCover', .25, scene);
 			this.albumCoverMesh.position = gfx.movePoint(startingPoint, new BABYLON.Vector3(-1, 0, 0).scale(.7 * albumCount));
 			this.albumCoverMesh.material = new BABYLON.StandardMaterial('albumCoverMat', scene);
@@ -1163,6 +1171,7 @@ module.exports = function () {
 			this.selecting = true;
 			this.active = true;
 			activeTool = this;
+			if (this.balloonGroup) this.balloonGroup.dispose();
 			if (this.box.visibility > 0) {
 				balloonOrigin = this.position;
 				this.elevateLabel();
@@ -1173,6 +1182,9 @@ module.exports = function () {
 			this.active = false;
 			this.hideLabel()
 			balloonOrigin = null;
+			console.log('scalingRod.balloonGroup: ', scalingRod.balloonGroup);
+			if (this.balloonGroup) this.balloonGroup.dispose();
+			//this.balloonGroup = scalingRod.balloonGroup.clone();
 		}
 		highlight() {
 			if (!this.active && !balloonOrigin) {
@@ -1235,6 +1247,8 @@ module.exports = function () {
 		hideChildren() {
 			this.effectorDials.forEach(function (dial) {
 				dial.hide();
+				console.log('dial: ', dial);
+				if (dial.balloonGroup) dial.balloonGroup.dispose();
 			});
 		}
 		showChildren() {
